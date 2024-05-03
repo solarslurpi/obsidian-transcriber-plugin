@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-transcriber-plugin",
 	"version": "0.0.0",
-	"description": "Transcribes audio into files stored within an Obsidian folder",
+	"description": "Transcribes mp3 files into transcript files stored within an Obsidian folder",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
