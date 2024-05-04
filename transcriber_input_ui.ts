@@ -1,44 +1,47 @@
-import { Modal, Setting, App, ButtonComponent } from 'obsidian';
+import { App, Modal, Notice, TextComponent, ButtonComponent } from 'obsidian';
 
-export class TranscriptionInputUI extends Modal {
-    promiseResolve: (value: string | null) => void;
+import TranscriberPlugin from "./main"
+import {processAudio} from "./process_audio"
 
-    constructor(app: App, resolve: (value: string | null) => void) {
+import { isValidYouTubeUrl, isValidMP3, logDebug } from './utils';  // Assuming validators are defined separately
+
+export class TranscriberInputUI extends Modal {
+    constructor(app: App, plugin: TranscriberPlugin) {
         super(app);
-        this.promiseResolve = resolve;
+        this.plugin = plugin;
     }
+    plugin: TranscriberPlugin;
+
+
 
     onOpen() {
-        const { contentEl } = this;
-        contentEl.createEl('h2', { text: 'Enter YouTube URL, MP3 URL, or MP3 File Path' });
+        logDebug(`Opening the TranscriberInputUI modal dialog.`);
+        console.log(`Endpoint URL: ${this.plugin.settings.endpointUrl}`);
+        let { contentEl } = this;
+        contentEl.createEl('h3', { text: 'Enter MP3 file path or YouTube URL:' });
 
-        let inputField: HTMLInputElement;
-
-        new Setting(contentEl)
-            .setName('Input')
-            .addText(text => {
-                text.setPlaceholder('https://youtube.com/watch?v=..., http://example.com/audio.mp3, or /path/to/file.mp3');
-                inputField = text.inputEl; // Store input element reference
-                text.onChange((value) => console.log('Current input: ' + value)); // Log input changes for debugging
-            });
+        let input = new TextComponent(contentEl)
+            .setPlaceholder("Enter path or URL here...");
 
         new ButtonComponent(contentEl)
             .setButtonText('Submit')
-            .onClick(() => {
-                if (inputField.value) {
-                    console.log('Submitting input: ' + inputField.value); // Log final input
-                    this.promiseResolve(inputField.value.trim());
-                    this.close();
-                } else {
-                    console.log('No input to submit'); // Log empty submission
-                    this.promiseResolve(null);
-                    this.close();
-                }
-            });
+            .onClick(() => this.handleSubmit(input.getValue()));
     }
 
     onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
+        logDebug(`Closing the TranscriberInputUI modal dialog.`);
+        this.contentEl.empty();
+    }
+
+    private handleSubmit(inputValue: string) {
+        if (isValidMP3(inputValue) || isValidYouTubeUrl(inputValue)) {
+            logDebug(`eiher valid mp3 or youtube url. On to processing audio.`)
+            processAudio(inputValue, this.plugin.settings.endpointUrl // Ensure you have this endpointUrl in your plugin settings
+            );
+            this.close();
+        } else {
+            logDebug(`Invalid input received.`);
+            new Notice('Please enter a valid MP3 file path or YouTube URL.');
+        }
     }
 }

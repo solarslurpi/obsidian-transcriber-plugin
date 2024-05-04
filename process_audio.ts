@@ -1,6 +1,9 @@
-// Assuming this is part of your TranscriptionService.ts
-export async function processAudio(audioInput: string, endpointUrl: string, updateStatus: (message: string, method: string) => void): Promise<void> {
-    console.log(`Processing audio input: ${audioInput} with endpoint URL: ${endpointUrl}`);
+import { Notice } from 'obsidian';
+import { logDebug } from './utils';  // Assuming validators are defined separately
+
+
+export async function processAudio(audioInput: string, endpointUrl: string): Promise<void> {
+    logDebug(`Processing audio input: ${audioInput} with endpoint URL: ${endpointUrl}`);
 
     try {
         const response = await fetch(endpointUrl, {
@@ -14,28 +17,35 @@ export async function processAudio(audioInput: string, endpointUrl: string, upda
         }
 
         const data = await response.json();
-        console.log('Transcription requested successfully:', data);
-        setupSSE(data.streamUrl, updateStatus);
+        logDebug('Transcription requested successfully');
+
+        // Assuming setupSSE is defined to handle the event stream
+        setupSSE(data.streamUrl);
     } catch (error) {
         console.error('Error during transcription request:', error);
-        updateStatus(`Error: ${error.message}`, 'statusBar');
+        new Notice('Error in transcription request.');
     }
 }
 
-function setupSSE(streamUrl: string, updateStatus: (message: string, method: string) => void): void {
+function setupSSE(streamUrl: string): void {
     const eventSource = new EventSource(streamUrl);
+
     eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.finalResult) {
-            updateStatus('Transcription completed', 'statusBar');
+            logDebug('Transcription completed');
+            new Notice('Transcription completed.');
             eventSource.close();
-        } else if (data.status) {
-            updateStatus(data.status, 'statusBar');
+            // Further UI updates, like updating the ribbon bar, would be handled here.
+        } else {
+            logDebug(`Status update - ${data.status}`);
+            // This could update a status bar or similar with progress or info.
         }
     };
 
-    eventSource.onerror = () => {
-        updateStatus('Connection error', 'statusBar');
+    eventSource.onerror = (error) => {
+        logDebug('SSE connection error');
+        new Notice('Error in transcription stream.');
         eventSource.close();
     };
 }

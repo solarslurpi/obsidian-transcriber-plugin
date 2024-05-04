@@ -1,10 +1,12 @@
 // main.ts
 // Main entry point for the plug in.  Handles user input, settings, and managing workflow.
 import { Plugin, Notice } from 'obsidian';
-import { TranscriptionInputUI } from './transcriber_input_ui';
+import { TranscriberInputUI } from './transcriber_input_ui';
 import { PluginSettings, DEFAULT_SETTINGS } from '././plugin_settings';
 import { SettingsTab } from './settings_tab_ui';
 import { processAudio} from './process_audio';
+
+
 
 export default class TranscriberPlugin extends Plugin {
     settings: PluginSettings;
@@ -53,7 +55,7 @@ export default class TranscriberPlugin extends Plugin {
     async promptForInput(): Promise<string | null> {
         console.log("Prompting for user input...");
         return new Promise(resolve => {
-            new TranscriptionInputUI(this.app, resolve).open();
+            new TranscriberInputUI(this.app, this).open();
         });
     }
 }
