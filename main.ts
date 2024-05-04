@@ -1,5 +1,5 @@
 // main.ts
-// Main entry point for the plug in.  Handles user input, settings, and managing workflow.
+
 import { Plugin, Notice } from 'obsidian';
 import { TranscriberInputUI } from './transcriber_input_ui';
 import { PluginSettings, DEFAULT_SETTINGS } from '././plugin_settings';
@@ -44,9 +44,9 @@ export default class TranscriberPlugin extends Plugin {
         }
         console.log("User input received:", userInput);
         try {
-            const endpointUrl = this.settings.endpointUrl;
-            console.log("endpoint url in settings: ", endpointUrl);
-            await processAudio(userInput, endpointUrl);
+            const transcriberApiUrl = this.settings.transcriberApiUrl;
+            console.log("endpoint url in settings: ", transcriberApiUrl);
+            await processAudio(userInput, transcriberApiUrl);
         } catch (error) {
             console.error("Failed to access settings:", error);
         }

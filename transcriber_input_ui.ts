@@ -1,47 +1,84 @@
 import { App, Modal, Notice, TextComponent, ButtonComponent } from 'obsidian';
-
-import TranscriberPlugin from "./main"
+import TranscriberPlugin from "./main";
 import {processAudio} from "./process_audio"
 
-import { isValidYouTubeUrl, isValidMP3, logDebug } from './utils';  // Assuming validators are defined separately
+import { isValidMP3, isValidYouTubeUrl, logDebug} from 'utils';
 
 export class TranscriberInputUI extends Modal {
+    plugin: TranscriberPlugin;
+    fileInput: HTMLInputElement;
+
     constructor(app: App, plugin: TranscriberPlugin) {
         super(app);
         this.plugin = plugin;
     }
-    plugin: TranscriberPlugin;
-
-
 
     onOpen() {
-        logDebug(`Opening the TranscriberInputUI modal dialog.`);
-        console.log(`Endpoint URL: ${this.plugin.settings.endpointUrl}`);
         let { contentEl } = this;
-        contentEl.createEl('h3', { text: 'Enter MP3 file path or YouTube URL:' });
+        contentEl.createEl('h3', { text: 'Submit YouTube URL or MP3 File' });
+        contentEl.createEl('p', { text: 'Please enter a YouTube URL'});
 
-        let input = new TextComponent(contentEl)
-            .setPlaceholder("Enter path or URL here...");
-
+        // Create a text input for YouTube URL
+        let urlInput = new TextComponent(contentEl)
+            .setPlaceholder("Enter YouTube URL here...");
+        contentEl.createEl('p', { text: '- OR -'});
+        contentEl.createEl('p', { text: 'Enter the path to an mp3 file: '});
+        // Create file input element for uploading MP3 files
+        this.fileInput = contentEl.createEl('input', {
+            type: 'file',
+            attr: {
+                accept: '.mp3', // Only accept .mp3 files
+                id: 'mp3-file-upload'
+            }
+        });
+        logDebug(`fileInput: ${this.fileInput}`);
+        // Add a button to handle the input or file submission
         new ButtonComponent(contentEl)
             .setButtonText('Submit')
-            .onClick(() => this.handleSubmit(input.getValue()));
+            .onClick(() => {
+                logDebug(`fileInput: ${this.fileInput}`);
+                // Check if a file is selected first
+                if (this.fileInput.files && this.fileInput.files.length > 0 && urlInput.getValue().trim() !== "") {
+                    new Notice('Please use only one input method: either a URL or a file.');
+                } else if (this.fileInput.files && this.fileInput.files.length > 0) {
+                    const file = this.fileInput.files[0];
+                    this.handleFileUpload(file); // Process the file upload
+                } else if (urlInput.getValue().trim() !== "") {
+                    this.handleUrlInput(urlInput.getValue()); // Process the URL input
+                } else {
+                    new Notice('Please enter a URL or select a file.');
+                }
+            });
+
+        contentEl.createEl('p', { text: 'Click "Submit" after entering a URL or selecting a file.' });
     }
 
     onClose() {
-        logDebug(`Closing the TranscriberInputUI modal dialog.`);
         this.contentEl.empty();
     }
 
-    private handleSubmit(inputValue: string) {
-        if (isValidMP3(inputValue) || isValidYouTubeUrl(inputValue)) {
-            logDebug(`eiher valid mp3 or youtube url. On to processing audio.`)
-            processAudio(inputValue, this.plugin.settings.endpointUrl // Ensure you have this endpointUrl in your plugin settings
-            );
-            this.close();
+    private handleFileUpload(file: File) {
+        console.log(`File selected: ${file.name}`);
+        if (isValidMP3(file.name)) {
+            if (this.fileInput.files && this.fileInput.files.length > 0) {
+                const file = this.fileInput.files[0]
+                const transcriberApiUrl = this.plugin.settings.transcriberApiUrl;
+                processAudio(file, transcriberApiUrl);
+            }
         } else {
-            logDebug(`Invalid input received.`);
-            new Notice('Please enter a valid MP3 file path or YouTube URL.');
+            new Notice('No file selected.');
+        }
+    }
+
+
+    private handleUrlInput(url: string) {
+        console.log(`URL entered: ${url}`);
+
+        if (isValidYouTubeUrl(url)) {
+            const transcriberApiUrl = this.plugin.settings.transcriberApiUrl;
+            processAudio(url, transcriberApiUrl);
+        } else {
+            new Notice('Invalid YouTube URL.');
         }
     }
 }

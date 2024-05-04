@@ -25,14 +25,25 @@ export class SettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // Endpoint URL Setting
+        // API Endpoint URL Setting
         new Setting(containerEl)
             .setName('API Endpoint URL')
             .setDesc('Specify the URL endpoint for transcription services.')
             .addText(text => text
-                .setValue(this.plugin.settings.endpointUrl)
+                .setValue(this.plugin.settings.transcriberApiUrl)
                 .onChange(async (value) => {
-                    this.plugin.settings.endpointUrl = value.trim();
+                    this.plugin.settings.transcriberApiUrl = value.trim();
+                    await this.plugin.saveSettings();
+                }));
+
+        // SSE URL Setting
+        new Setting(containerEl)
+            .setName('SSE URL')
+            .setDesc('Specify the URL endpoint for server-sent events.')
+            .addText(text => text
+                .setValue(this.plugin.settings.sseUrl)
+                .onChange(async (value) => {
+                    this.plugin.settings.sseUrl = value.trim();
                     await this.plugin.saveSettings();
                 }));
     }

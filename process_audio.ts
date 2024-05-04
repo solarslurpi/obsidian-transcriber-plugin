@@ -2,11 +2,18 @@ import { Notice } from 'obsidian';
 import { logDebug } from './utils';  // Assuming validators are defined separately
 
 
-export async function processAudio(audioInput: string, endpointUrl: string): Promise<void> {
-    logDebug(`Processing audio input: ${audioInput} with endpoint URL: ${endpointUrl}`);
+export async function processAudio(audioInput: string | File, transcriberApiUrl: string): Promise<void> {
+    if (typeof audioInput === 'string') {
+        logDebug(`Processing audio input (URL): ${audioInput} with endpoint URL: ${transcriberApiUrl}`);
+        new Notice(`Processing audio input (URL): ${audioInput} with endpoint URL: ${transcriberApiUrl}`);
+    } else {
+        logDebug(`${audioInput}`)
+        logDebug(`Processing audio input (File): ${audioInput.name} with endpoint URL: ${transcriberApiUrl}`);
+        new Notice(`Processing audio input (File): ${audioInput.name} with endpoint URL: ${transcriberApiUrl}`);
+    }
 
     try {
-        const response = await fetch(endpointUrl, {
+        const response = await fetch(transcriberApiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ audioUrl: audioInput })

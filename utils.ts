@@ -1,4 +1,4 @@
-
+import { Plugin } from 'obsidian';
 
 // Assuming a simple environment check - adjust as necessary for your setup
 export const isDevelopmentMode = /localhost|127\.0\.0\.1/.test(window.location.host);
@@ -23,6 +23,6 @@ export function isValidMP3(filePath: string): boolean {
 
 export function logDebug(context: string): void {
     // if (isDevelopmentMode) {
-    console.log(`Debug - ${context}:`);
+    console.log(`Debug - ${context}`);
     // }
 }
