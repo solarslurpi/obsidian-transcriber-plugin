@@ -4,10 +4,12 @@ export interface PluginSettings {
     transcriptsFolder: string;
     transcriberApiUrl: string;
     sseUrl: string;
+    test_mode: boolean;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
     transcriptsFolder: 'Transcripts',
-    transcriberApiUrl: 'https://127.0.0.1/api/v1/process_audio',
-    sseUrl: 'https://127.0.0.1/api/v1/sse'
+    transcriberApiUrl: 'http://127.0.0.1:8000/api/v1/process_audio',
+    sseUrl: 'http://127.0.0.1:8000/api/v1/sse',
+    test_mode: true
 };

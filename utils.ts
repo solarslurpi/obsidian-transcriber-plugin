@@ -1,28 +1,45 @@
-import { Plugin } from 'obsidian';
 
-// Assuming a simple environment check - adjust as necessary for your setup
-export const isDevelopmentMode = /localhost|127\.0\.0\.1/.test(window.location.host);
 
-export function isValidYouTubeUrl(url: string): boolean {
-    const videoRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]+(&[\w-]+)*$/;
+
+export function isValidYouTubeUrl(url: string, test_mode: boolean): boolean {
+    const videoRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[\w-]+(&[\w-]+)*$/;
     const playlistRegex = /^(https?:\/\/)?(www\.)?youtube\.com\/playlist\?list=[\w-]+$/;
     const isValid = videoRegex.test(url) || playlistRegex.test(url);
-    logDebug(`valid YouTube URl: ${isValid}`)
+
+    logDebug(test_mode, `valid YouTube URl: ${isValid}`)
     return isValid;
 }
 
-export function isValidMP3(filePath: string): boolean {
+export function isValidMP3(filePath: string, test_mode: boolean): boolean {
     if (!filePath.endsWith('.mp3')) {
-        logDebug(`Not a valid mp3 filepath`);
+        logDebug(test_mode, `Not a valid mp3 filepath`);
         return false;
     }
-    logDebug(`valid mp3 filepath`)
+    logDebug(test_mode, `valid mp3 filepath`)
     // const mimeType = lookup(filePath);
     return true;
 }
 
-export function logDebug(context: string): void {
-    // if (isDevelopmentMode) {
-    console.log(`Debug - ${context}`);
-    // }
+/**
+ * Logs a debug message to the console if test mode is enabled, with 'Debug -' as a prefix.
+ * @param {boolean} test_mode - Indicates whether to perform logging.
+ * @param {string} message - The message to be logged.
+ */
+export function logDebug(test_mode:boolean, message:string, object?: any ) {
+    if (test_mode) {
+        if (object) {
+            try {
+                // Attempt to serialize the object into a JSON string.
+                message += " - " + JSON.stringify(object, (key, value) => {
+                    if (typeof value === 'function') {
+                        return `function ${value.name}() {...}`;
+                    }
+                    return value;
+                }, 2);
+            } catch (error) {
+                message += " - Error serializing object: " + error.message;
+            }
+        }
+        console.log("Debug - " + message);
+    }
 }

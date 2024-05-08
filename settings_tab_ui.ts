@@ -46,5 +46,17 @@ export class SettingsTab extends PluginSettingTab {
                     this.plugin.settings.sseUrl = value.trim();
                     await this.plugin.saveSettings();
                 }));
+
+        // Toggle for test mode
+        new Setting(containerEl)
+        .setName('Test mode')
+        .setDesc('Enable or disable test mode.')
+        .addToggle(toggle => toggle
+            .setValue(this.plugin.settings.test_mode)
+            .onChange(async (value) => {
+                this.plugin.settings.test_mode = value;
+                await this.plugin.saveSettings();
+            }));
+
     }
 }

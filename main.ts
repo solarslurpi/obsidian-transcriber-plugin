@@ -4,12 +4,12 @@ import { Plugin, Notice } from 'obsidian';
 import { TranscriberInputUI } from './transcriber_input_ui';
 import { PluginSettings, DEFAULT_SETTINGS } from '././plugin_settings';
 import { SettingsTab } from './settings_tab_ui';
-import { processAudio} from './process_audio';
 
 
 
 export default class TranscriberPlugin extends Plugin {
     settings: PluginSettings;
+
 
     async onload() {
         console.log("Loading Transcriber Plugin");
@@ -21,6 +21,8 @@ export default class TranscriberPlugin extends Plugin {
             name: 'Transcribe Audio',
             callback: () => this.handleAudioInput()
         });
+
+
     }
 
     async loadSettings() {
@@ -41,14 +43,6 @@ export default class TranscriberPlugin extends Plugin {
             new Notice('No input provided.');
             console.log("No user input provided.");
             return;
-        }
-        console.log("User input received:", userInput);
-        try {
-            const transcriberApiUrl = this.settings.transcriberApiUrl;
-            console.log("endpoint url in settings: ", transcriberApiUrl);
-            await processAudio(userInput, transcriberApiUrl);
-        } catch (error) {
-            console.error("Failed to access settings:", error);
         }
     }
 
