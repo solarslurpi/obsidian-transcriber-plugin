@@ -5,18 +5,20 @@ import { logDebug } from './utils';
 
 
 // Overloads
-export function processAudio(file: File, apiUrl: string, sseUrl: string, folderPath:string, test_mode:boolean): Promise<void>;
-export function processAudio(url: string, apiUrl: string, sseUrl: string, folderPath: string, test_mode:boolean): Promise<void>;
+export function processAudio(file: File, apiUrl: string, sseUrl: string, folderPath:string, test_mode:boolean, audioQuality: string): Promise<void>;
+export function processAudio(url: string, apiUrl: string, sseUrl: string, folderPath: string, test_mode:boolean, audioQuality: string): Promise<void>;
+
 
 // Implementation
-export async function processAudio(input: File | string, apiUrl: string, sseUrl: string, folderPath: string, test_mode:boolean): Promise<void> {
+export async function processAudio(input: File | string, apiUrl: string, sseUrl: string, folderPath: string, test_mode:boolean, audioQuality:string): Promise<void> {
+    new Notice('Starting to process audio.',5000);
     try {
         if (input instanceof File) {
             logDebug(test_mode, `Processing audio input (File): ${input.name} with endpoint URL: ${apiUrl}`);
-            await processFile(input, apiUrl, sseUrl, folderPath, test_mode);
+            await processFile(input, apiUrl, sseUrl, folderPath, test_mode, audioQuality);
         } else if (typeof input === 'string') {
             logDebug(test_mode, `Processing audio input (URL): ${input} with endpoint URL: ${apiUrl}`);
-            await processUrl(input, apiUrl, sseUrl, folderPath, test_mode);
+            await processUrl(input, apiUrl, sseUrl, folderPath, test_mode, audioQuality);
         } else {
             throw new Error('Invalid input type');
         }
@@ -26,9 +28,11 @@ export async function processAudio(input: File | string, apiUrl: string, sseUrl:
     }
 }
 
-async function processFile(file: File, apiUrl: string, sseUrl: string, folderPath: string, test_mode: boolean): Promise<void> {
+async function processFile(file: File, apiUrl: string, sseUrl: string, folderPath: string, test_mode: boolean, audioQuality: string): Promise<void> {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("audio_quality", audioQuality); // Added line
+
     logDebug(test_mode, "Sending POST with File attachment.")
     const response = await fetch(apiUrl, {
         method: 'POST',
@@ -38,9 +42,10 @@ async function processFile(file: File, apiUrl: string, sseUrl: string, folderPat
     handleResponse(response, sseUrl, folderPath, test_mode);
 }
 
-async function processUrl(url: string, apiUrl: string, sseUrl: string, folderPath: string, test_mode: boolean): Promise<void> {
+async function processUrl(url: string, apiUrl: string, sseUrl: string, folderPath: string, test_mode: boolean, audioQuality: string): Promise<void> {
     const formData = new FormData();
-    formData.append("youtube_url", url); // Ensure the parameter name matches the server expectation
+    formData.append("youtube_url", url);
+    formData.append("audio_quality", audioQuality); // Added line
 
     const response = await fetch(apiUrl, {
         method: 'POST',
@@ -94,13 +99,6 @@ function setupSSE(sseUrl: string, folderPath: string,  test_mode: boolean): void
         }
     };
 
-        // if (test_mode) {
-        //     messageCount++;
-        //     if (messageCount > MAX_MESSAGES) {
-        //         logDebug(test_mode, `In test_mode.  Closing sse traffic. messageCount ${messageCount}`);
-        //         eventSource.close();
-        //     }
-        // }
     eventSource.onerror = (event) => {
         console.error('SSE connection error:', event);  // Log the error event object to the console
         eventSource.close();

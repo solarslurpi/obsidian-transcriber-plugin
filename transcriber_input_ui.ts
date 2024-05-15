@@ -88,7 +88,7 @@ export class TranscriberInputUI extends Modal {
             if (this.fileInput.files && this.fileInput.files.length > 0) {
                 const file = this.fileInput.files[0];
                 const transcriberApiUrl = this.plugin.settings.transcriberApiUrl;
-                processAudio(file, transcriberApiUrl, this.plugin.settings.sseUrl, this.plugin.settings.transcriptsFolder, this.plugin.settings.test_mode);
+                processAudio(file, transcriberApiUrl, this.plugin.settings.sseUrl, this.plugin.settings.transcriptsFolder, this.plugin.settings.test_mode,this.plugin.settings.audioQuality);
             }
         } else {
             new Notice('No file selected.');
@@ -99,7 +99,7 @@ export class TranscriberInputUI extends Modal {
         console.log(`URL entered: ${url}`);
         if (isValidYouTubeUrl(url, test_mode)) {
             const transcriberApiUrl = this.plugin.settings.transcriberApiUrl;
-            processAudio(url, transcriberApiUrl, this.plugin.settings.sseUrl, this.plugin.settings.transcriptsFolder, test_mode);
+            processAudio(url, transcriberApiUrl, this.plugin.settings.sseUrl, this.plugin.settings.transcriptsFolder, test_mode, this.plugin.settings.audioQuality);
         } else {
             new Notice('Invalid YouTube URL.');
         }

@@ -47,16 +47,30 @@ export class SettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        // Audio Quality Setting
+        new Setting(containerEl)
+            .setName('Audio Quality')
+            .setDesc('Select the desired audio quality')
+            .addDropdown(dropdown => {
+                dropdown.addOption('small', 'small')
+                        .addOption('medium', 'medium')
+                        .addOption('large', 'large')
+                        .setValue(this.plugin.settings.audioQuality)
+                        .onChange(async (value) => {
+                            this.plugin.settings.audioQuality = value;
+                            await this.plugin.saveSettings();
+                        });
+            });
+
         // Toggle for test mode
         new Setting(containerEl)
-        .setName('Test mode')
-        .setDesc('Enable or disable test mode.')
-        .addToggle(toggle => toggle
-            .setValue(this.plugin.settings.test_mode)
-            .onChange(async (value) => {
-                this.plugin.settings.test_mode = value;
-                await this.plugin.saveSettings();
-            }));
-
+            .setName('Test mode')
+            .setDesc('Enable or disable test mode.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.test_mode)
+                .onChange(async (value) => {
+                    this.plugin.settings.test_mode = value;
+                    await this.plugin.saveSettings();
+                }));
     }
 }

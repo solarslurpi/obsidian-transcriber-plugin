@@ -21,13 +21,13 @@ export default class TranscriberPlugin extends Plugin {
             name: 'Transcribe Audio',
             callback: () => this.handleAudioInput()
         });
-
-
     }
 
     async loadSettings() {
         console.log("Loading settings...");
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings = Object.assign({
+            audioQuality: 'large',
+        }, DEFAULT_SETTINGS, await this.loadData());
         console.log("Settings loaded:", this.settings);
     }
 
