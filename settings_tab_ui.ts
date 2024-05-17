@@ -36,23 +36,13 @@ export class SettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // SSE URL Setting
-        new Setting(containerEl)
-            .setName('SSE URL')
-            .setDesc('Specify the URL endpoint for server-sent events.')
-            .addText(text => text
-                .setValue(this.plugin.settings.sseUrl)
-                .onChange(async (value) => {
-                    this.plugin.settings.sseUrl = value.trim();
-                    await this.plugin.saveSettings();
-                }));
-
         // Audio Quality Setting
         new Setting(containerEl)
             .setName('Audio Quality')
             .setDesc('Select the desired audio quality')
             .addDropdown(dropdown => {
-                dropdown.addOption('small', 'small')
+                dropdown.addOption('tiny', 'tiny')
+                        .addOption('small', 'small')
                         .addOption('medium', 'medium')
                         .addOption('large', 'large')
                         .setValue(this.plugin.settings.audioQuality)
