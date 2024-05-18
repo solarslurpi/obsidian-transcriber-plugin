@@ -2,11 +2,23 @@
 import { Notice, TFile } from 'obsidian';
 import { logDebug } from './utils';
 
+interface SSEState {
+    chapters: string[];
+    frontmatter: string;
+    fullPath: string;
+    numChapters: number;
+    transcriptTime?: string;
+    isClosed: boolean;
+    isComplete: boolean;
+}
+
 // Overloads
 export function processAudio(file: File, apiUrl: string, folderPath: string, test_mode: boolean, audioQuality: string): Promise<void>;
 export function processAudio(url: string, apiUrl: string, folderPath: string, test_mode: boolean, audioQuality: string): Promise<void>;
 
 // Implementation
+
+
 export async function processAudio(input: File | string, apiUrl: string, folderPath: string, test_mode: boolean, audioQuality: string): Promise<void> {
     new Notice('Starting to process audio.');
     try {
@@ -59,8 +71,7 @@ async function handleResponse(apiUrl:string, response: Response, folderPath: str
     }
 
     const data = await response.json();
-    console.log(data);
-    logDebug(test_mode, `Transcription requested successfully. Here is the data: `, data);
+    console.log(`-> handleResponse - Transcription requested successfully. Here is the data: ${data}`);
 
     // Start SSE after successfully initiating the transcription process
     handleSSE(apiUrl, folderPath, test_mode);
@@ -69,57 +80,115 @@ async function handleResponse(apiUrl:string, response: Response, folderPath: str
 function handleSSE(apiUrl:string, folderPath: string, test_mode: boolean): void {
     const sseUrl = apiUrl.replace("/process_audio", "/stream");
     const eventSource = new EventSource(`${sseUrl}`);
-    let fullPath = '';
+    const state: SSEState = {
+        chapters: [],
+        frontmatter: '',
+        fullPath: '',
+        numChapters: 0, // If started as YouTube and has chapters, track number of chapters processed.
+        isClosed: false, // Flag to track if SSE is closed
+        isComplete: false // Flag to track if transcription process is complete
+    };
+
 
     eventSource.onmessage = (event) => {
+        if (state.isClosed) {
+            console.log('Received message after SSE is closed:', event.data);
+            return;
+        }
 
         const data = JSON.parse(event.data);
-        console.log('Received event data:', data);
-        console.log('Full path:', fullPath);
+
+        console.log('**>Received event data:', data);
+
         if (data.status) {
-            console.log(`-> handleSSE. Status: ${data.status}`);
+            console.log(`-> data.status Status: ${data.status}`);
             new Notice(data.status);
+        }
+        if (data.error) {
+            eventSource.close();
+            state.isClosed = true;
+            console.log(`-> data.error Error: ${data.error}`);
+            // Show for a bit longer (say 10 seconds?)
+            new Notice(data.error, 10000);
         }
         if (data.done) {
             eventSource.close();
-            console.log('Transcription process finished.');
+            state.isClosed = true;  // Set flag to indicate SSE is closed
+            state.isComplete = true; // Set flag to indicate transcription process is complete
+            console.log('-> data.done Transcription process finished.');
+            saveTranscript(state);
             new Notice('Transcription process finished.');
         }
         if (data.filename) {
-            console.log(`-> data.filename. Transcript folder: ${fullPath}`);
+            console.log(`-> data.filename. Transcript folder: ${state.fullPath}`);
             const transcript_filename = `${data.filename}.md`;
-            fullPath = `${folderPath}/${transcript_filename}`;
-            console.log('Full path:', fullPath);
+            state.fullPath = `${folderPath}/${transcript_filename}`;
+            console.log('Full path:', state.fullPath);
         }
-
 
         // The front matter comes from YouTube Metadata.
         if (data.frontmatter) {
-            console.log(`-> data.frontmatter. Transcript filename: ${fullPath}`);
-            try {
-                saveTranscriptPart('frontmatter', fullPath, data.frontmatter);
-                console.log(`File successfully written at ${fullPath}`);
-            } catch (error) {
-                console.error(`Failed to write file at ${fullPath}:`, error);
-            }
+            state.frontmatter = data.frontmatter;
+            console.log(`-> data.frontmatter. Frontmatter: ${state.frontmatter}`);
         }
 
         // If the process started from a YouTube URL, there is
         // a chance of having the video broken into chapters.
+        if (data.num_chapters) {
+            state.numChapters = data.num_chapters;
+            console.log(`-> data.num_chapters. Chapter format. Num chapters: ${data.num_chapters}`);
+
+        }
         if (data.chapter) {
-            console.log(`-> data.chapter. Transcript filename: ${fullPath}`);
-            try {
-                saveTranscriptPart('chapter', fullPath, data.chapter);
-                console.log(`Chapter successfully appended to file at ${fullPath}`);
-            } catch (error) {
-                console.error(`Failed to append chapter to file at ${fullPath}:`, error);
-            }
+            console.log(`-> data.chapter. Chapter: ${data.chapter}`);
+            state.chapters.push(data.chapter);
         }
     };
+}
+
+function saveTranscript(state: SSEState) {
+    new Notice(`Saving transcript to ${state.fullPath}.`);
+    console.log(`Saving transcript to ${state.fullPath}.`);
+    try {
+
+        // Use the Obsidian library to interact with files in the vault.
+        let file = this.app.vault.getAbstractFileByPath(state.fullPath) as TFile;
+
+        // Prepare the content to write
+        let content = '';
+
+        // Check if there is frontmatter to write
+        if (state.frontmatter) {
+            content += `${state.frontmatter}\n\n`;
+        }
+
+        // Append the chapters or other content
+        if (state.chapters) {
+            content += state.chapters;
+            content += '\n' // Have a new line between chapters.
+        } else {
+            content += "No content available.";
+        }
+
+        if (file) {
+            // Modify the file if it exists
+            this.app.vault.modify(file, content);
+        } else {
+            // Create the file if it does not exist
+            this.app.vault.create(state.fullPath, content);
+        }
+
+    } catch (error) {
+        console.error(`Error saving transcript: ${error.message}`);
+    }
+}
+
 
 async function saveTranscriptPart(transcriptPart:string,fullPath: string, content: string): Promise<void> {
     console.log(`-> saveTranscript. Full path: ${fullPath}`);
     try {
+
+        // Use the Obsidian library to interact with files in the vault.
         let file = this.app.vault.getAbstractFileByPath(fullPath) as TFile;
         console.log(`-> saveTranscript. File: ${file}`);
         // frontmatter and all start the file. If there are
@@ -137,10 +206,7 @@ async function saveTranscriptPart(transcriptPart:string,fullPath: string, conten
             console.log(`-> saveTranscript APPEND CHAPTER. Appending chapter to file at ${fullPath}`);
             await this.app.vault.append(file, content);
         }
-        console.log('Transcript saved successfully!');
-        new Notice('Transcript saved successfully!');
     } catch (error) {
-        console.error('Error saving transcript:', error);
-        new Notice('Failed to save transcript.');
+        console.error(`Error saving ${transcriptPart}: ${error}`);
     }
-}}
+}

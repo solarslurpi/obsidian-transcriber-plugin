@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TextComponent, ButtonComponent, TFile, TFolder } from 'obsidian';
+import { App, Modal, Notice, TextComponent, ButtonComponent } from 'obsidian';
 import TranscriberPlugin from "./main";
 import { processAudio } from "./process_audio";
 import { isValidMP3, isValidYouTubeUrl, logDebug } from './utils';
@@ -65,9 +65,12 @@ export class InputUI extends Modal {
         this.contentEl.empty();
     }
 
-
     private async handleClick(urlInput : TextComponent){
         logDebug(this.plugin.settings.test_mode, `fileInput: ${this.fileInput}`);
+        if (this.fileInput.files && this.fileInput.files.length > 0) {
+            console.log(`this.fileInput.files[0]: ${this.fileInput.files[0]}`);
+        }
+
         const transcripts_folder = this.plugin.settings.transcriptsFolder;
         try {
             await this.ensureFolder(this.plugin.settings.transcriptsFolder);
@@ -76,61 +79,78 @@ export class InputUI extends Modal {
             return;
         }
         if (this.fileInput.files && this.fileInput.files.length > 0 && urlInput.getValue().trim() !== "") {
+
             new Notice('Please use only one input method: either a URL or a file.');
+        // Handle an mp3 file upload.
         } else if (this.fileInput.files && this.fileInput.files.length > 0) {
             const file = this.fileInput.files[0];
-            this.handleFileUpload(file, this.plugin.settings.test_mode);
+            await this.handleFileUpload(file, this.plugin.settings.test_mode);
+        // Handle a YouTube url.
         } else if (urlInput.getValue().trim() !== "") {
-            this.handleUrlInput(urlInput.getValue(), this.plugin.settings.test_mode);
+            await this.handleUrlInput(urlInput.getValue(), this.plugin.settings.test_mode);
         } else {
             new Notice('Please enter a URL or select a file.');
         }
     }
 
-    private handleFileUpload(file: File, test_mode: boolean) {
-        console.log(`File selected: ${file.name}`);
-        // Make a string check if the name is valid.
-        if (isValidMP3(file.name, test_mode)) {
-            // Check that the mp3 file exists and it is not an empty file.
-            if (this.fileInput.files && this.fileInput.files.length > 0) {
-                const file = this.fileInput.files[0];
-                const transcriberApiUrl = this.plugin.settings.transcriptsFolder;
-                processAudio(file, transcriberApiUrl, this.plugin.settings.transcriptsFolder, this.plugin.settings.test_mode,this.plugin.settings.audioQuality);
-            }
-        } else {
-            new Notice('No file selected.');
-        }
-    }
-    private handleUrlInput(url: string, test_mode: boolean) {
-        console.log(`URL entered: ${url}`);
-        if (isValidYouTubeUrl(url, test_mode)) {
-            const transcriberApiUrl = this.plugin.settings.transcriberApiUrl;
-            processAudio(url, transcriberApiUrl, this.plugin.settings.transcriptsFolder, test_mode, this.plugin.settings.audioQuality);
-        } else {
-            new Notice('Invalid YouTube URL.');
-        }
-    }
-    async ensureFolder(folderPath: string) {
-        console.log("--> ensureFolder")
-        console.log('folder path: ',folderPath)
-        try {
-            await this.app.vault.createFolder(folderPath);
-            console.log("Transcripts folder created successfully.");
-            return true;
-        } catch (error) {
-            // If the error was folder already exists, that's ok.
-                console.log("ERROR: ",error.message);
-                if (error.message.includes('Folder already exists.')) {
-                    console.log("Folder already existed.");
-                    return true;
-                } else {
-                    console.error("Failed to create transcripts folder:", error);
-                    throw new Error("Failed to create transcripts folder: " + error.message);
-                }
-        }
-    }
-    async checkServiceAvailability(): Promise<boolean> {
+	private async handleFileUpload(file: File, test_mode: boolean) {
+		console.log(`-> handleFileUpload - File selected: ${file.name}`);
+		// Make a string check if the name is valid.
+		if (isValidMP3(file.name, test_mode)) {
+			const apiUrl = this.plugin.settings.transcriberApiUrl;
+			const folderPath = this.plugin.settings.transcriptsFolder;
+			try {
+				await processAudio(
+					file,
+					apiUrl,
+					folderPath,
+					test_mode,
+					this.plugin.settings.audioQuality
+				);
+			} catch (error) {
+				new Notice(`Error attempting to processAudio. ${error}`);
+				console.log(`Error attempting to processAudio. ${error}`);
+			}
+		}
+	}
 
+	private async handleUrlInput(url: string, test_mode: boolean) {
+		console.log(`URL entered: ${url}`);
+		if (isValidYouTubeUrl(url, test_mode)) {
+			const transcriberApiUrl = this.plugin.settings.transcriberApiUrl;
+			await processAudio(
+				url,
+				transcriberApiUrl,
+				this.plugin.settings.transcriptsFolder,
+				test_mode,
+				this.plugin.settings.audioQuality
+			);
+		} else {
+			new Notice("Invalid YouTube URL.");
+		}
+	}
+	async ensureFolder(folderPath: string) {
+		console.log("--> ensureFolder");
+		console.log("folder path: ", folderPath);
+		try {
+			await this.app.vault.createFolder(folderPath);
+			console.log("Transcripts folder created successfully.");
+			return true;
+		} catch (error) {
+			// If the error was folder already exists, that's ok.
+			console.log("ERROR: ", error.message);
+			if (error.message.includes("Folder already exists.")) {
+				console.log("Folder already existed.");
+				return true;
+			} else {
+				console.error("Failed to create transcripts folder:", error);
+				throw new Error(
+					"Failed to create transcripts folder: " + error.message
+				);
+			}
+		}
+	}
+    async checkServiceAvailability(): Promise<boolean> {
         try {
             const response = await fetch(this.healthCheckUrl);
             return response.ok;
