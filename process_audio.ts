@@ -147,6 +147,12 @@ function handleSSE(apiUrl:string, folderPath: string, test_mode: boolean): void 
 }
 
 function saveTranscript(state: SSEState) {
+    // Need the place to save the file.  Check that the code knows what it is.
+    if (!state.fullPath) {
+        new Notice('A transcript file path was not provided by the server. Please report this issue to the plugin author.', 10000);
+        console.log('A transcript file path was not provided by the server.');
+        return;
+    }
     new Notice(`Saving transcript to ${state.fullPath}.`);
     console.log(`Saving transcript to ${state.fullPath}.`);
     try {
