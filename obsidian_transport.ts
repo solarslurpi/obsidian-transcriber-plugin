@@ -2,7 +2,6 @@ import TransportStream, { TransportStreamOptions } from 'winston-transport';
 import { Vault, TFile } from 'obsidian';
 import * as path from 'path';
 
-
 interface CustomTransportOptions extends TransportStreamOptions {
   vault: Vault;
   logFilePath: string;
@@ -18,20 +17,42 @@ class ObsidianTransport extends TransportStream {
     this.logFilePath = opts.logFilePath;
   }
 
+  async initializeLogFile() {
+    const yamlHeader = `---
+tags: log_file
+log_entries:
+`;
+
+    let file = this.vault.getAbstractFileByPath(this.logFilePath) as TFile;
+    if (!file) {
+      await this.vault.create(this.logFilePath, yamlHeader + '---\n');
+    } else {
+      const content = await this.vault.read(file);
+      if (!content.startsWith('---')) {
+        await this.vault.modify(file, yamlHeader + content);
+      }
+    }
+  }
+
   log(info: any, callback: () => void) {
     setImmediate(() => this.emit('logged', info)); // Ensure 'logged' event is emitted
-    const logEntry = `${info.timestamp} ${info.level}: ${info.message}\n`;
-    const logFolder = path.dirname(this.logFilePath);
+    const logEntry = `  - timestamp: "${info.timestamp}"
+    level: "${info.level}"
+    message: "${info.message}"\n`;
 
     (async () => {
       try {
-        // await ensureFolder(logFolder);
         let file = this.vault.getAbstractFileByPath(this.logFilePath) as TFile;
         if (!file) {
-          await this.vault.create(this.logFilePath, logEntry);
+          const yamlHeader = `---
+tags: log_file
+log_entries:
+`;
+          await this.vault.create(this.logFilePath, yamlHeader + logEntry + '---\n');
         } else {
           const content = await this.vault.read(file);
-          await this.vault.modify(file, content + logEntry);
+          const newContent = content.replace(/\n---\n$/, '') + '\n' + logEntry + '---\n';
+          await this.vault.modify(file, newContent);
         }
       } catch (error) {
         console.error('Error writing log entry to Obsidian vault:', error);

@@ -15,7 +15,7 @@ export default class TranscriberPlugin extends Plugin {
 
         const logDir = this.settings.logDir;  // Use the log directory from settings
         console.log(`Log directory: ${logDir}`);
-        initializeLogger(this.app.vault, logDir, 'transcriber_log.md');  // Initialize logger with the file path
+        await initializeLogger(this.app.vault, logDir, 'transcriber_log.md');  // Initialize logger with the file path
         // Add settings tab and commands
         this.addSettingTab(new SettingsTab(this.app, this));
         this.addCommand({
