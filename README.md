@@ -1,4 +1,81 @@
-# Obsidian Sample Plugin
+# Obsidian MP3 Transcriber
+Transcribe YouTube videos and mp3 files into Obsidian notes.  The note includes both the metadata and the transcript text.
+
+<div style="text-align: center;">
+  <img src="docs/images/30_000_foot.png" alt="30000 foot view" width="800" />
+</div>
+
+The **Person Using Plugin** inputs a YouTube URL or uploads an MP3 file through the **Plugin UI**, which the **Plugin Code (ObsidianMP3Transcriber)** sends to the **FastAPI service** for transcription. The **FastAPI service** processes the audio, generating the transcript and metadata, and sends them back to the **Plugin Code**. The **Plugin Code** then integrates this frontmatter and content into an Obsidian note stored within a folder within the **Person Using Plugin**'s vault.
+
+
+# Quickstart
+
+## Run Service
+
+## Install Plugin
+
+## Set Properties
+
+## Transcribe
+
+> **Note:** This section assumes:
+>- The service is running.
+>- The plugin has been installed.
+>- The properties have been set.
+
+Within a vault you wish to store transcriptions:
+
+- Bring up the Obsidian Command Palette. You can open it by pressing `Ctrl+P` (or `Cmd+P` on macOS) by default.
+- Bring up the transcriber ui by typing `t` then`r` - basically spelling out `transcriber` until the name of the plugin (Obsidian Transcriber) is highlighted.  Press `enter`.
+- Paste a YouTube url or Choose a local mp3 file.
+- Press `submit`.
+
+There will be occassional notices as the service runs through the transcription process.  It could take quite a while before completing.
+
+Upon completion, the transcript will be located in the Obsidian vault's transcripts folder (unless another folder was assigned during property settings).
+
+The filename will be the title of the YouTube video or the mp3 filename base in the case of an uploaded mp3 file.
+
+
+> **Note:** The plugin must be able to communicate with the Fastapi service.  It is the Fastapi service running the software that downloads youtube vidoes as well as transcribe mp3 files. This section of the documentation assumes availability of this service to the plugin.
+
+
+# Contents of a Transcribed Note
+Consider the output after asking the plugin to transcribe the YouTube video, [LLM Prompt FORMATS make or break your LLM and RAG](https://www.youtube.com/watch?v=KbZDsrs5roI).  The plugin will create two sections in the note:
+- Frontmatter
+- Transcript text
+If the YouTube video has metadata on chapters, the transcript text will be sectioned into chapters.
+## Frontmatter
+The plugin builds frontmatter based on the metadata and tuning parameters.
+<div style="text-align: center;">
+  <img src="docs/images/frontmatter.png" alt="30000 foot view" width="600" />
+</div>
+
+### Metadata
+The key/values of the frontmatter are derived from YouTube metadata and OpenAI Whisper tuning parameters. These properties benefit search (e.g., tags) and provide context about the video (e.g., description, tags). Additionally, the tuning parameters used as input to OpenAI Whisper are included.
+
+#### Title / Filename
+The YouTube metadata provides the title, which is used to build the filename in the vault.
+
+## Transcript Text with Chapters
+If a transcript originated from a YouTube video, it might be lucky enough to be segmented into chapters.  Some, but unfortunately not all YouTube videos, are segmented into chapters.  Along with the start and end time, each chapter comes with a title.  There are two ways a video can have chapters.  The author can manually create chapters by adding timestamps and titles.  YouTube can also generate chapters algorithmically using techniques like Natural Language Processing (NLP), visual and audio cues, and user interaction data.
+
+### Example
+Consider the YouTube video, [Bluelab Pulse Meter Review](https://www.youtube.com/watch?v=KbZDsrs5roI).  The video has been segmented into chapters:
+<div>
+  <img src="docs/images/youtube_metadata.png" alt="30000 foot view" width="800" />
+</div>
+
+The transcription service takes the audio content and builds the content section following the frontmatter.
+<div>
+  <img src="docs/images/transcribed_chapters.png" alt="30000 foot view" width="700" />
+</div>
+
+
+
+
+
+
 
 This is a sample plugin for Obsidian (https://obsidian.md).
 
@@ -58,7 +135,7 @@ Quick starting guide for new plugin devs:
 - Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
 
 ## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
+- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
 - To use eslint with this project, make sure to install eslint from terminal:
   - `npm install -g eslint`
 - To use eslint to analyze this project use this command:
