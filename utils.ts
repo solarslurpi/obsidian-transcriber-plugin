@@ -1,27 +1,23 @@
 import {logger} from './logger';
 
-export function isValidYouTubeUrl(url: string, test_mode: boolean): boolean {
+export function isValidYouTubeUrl(url: string): boolean {
     const videoRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[\w-]+(&[\w-]+)*$/;
     const playlistRegex = /^(https?:\/\/)?(www\.)?youtube\.com\/playlist\?list=[\w-]+$/;
     const isValid = videoRegex.test(url) || playlistRegex.test(url);
-
-    if (test_mode) {
-        logger.debug(`valid YouTube URL: ${isValid}`);
-    }
+    logger.debug(`valid YouTube URL: ${isValid}`);
     return isValid;
 }
 
-export function isValidMP3(filePath: string, test_mode: boolean): boolean {
+export function isValidMP3(filePath: string): boolean {
     const isValid = filePath.endsWith('.mp3');
-    if (test_mode) {
         if (isValid) {
             logger.debug(`valid mp3 filepath`);
         } else {
             logger.debug(`Not a valid mp3 filepath`);
         }
-    }
     return isValid;
 }
+
 export async function  ensureFolder(folderPath: string) {
     logger.debug("--> ensureFolder");
     logger.debug(`folder path: ${folderPath}`);

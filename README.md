@@ -1,22 +1,35 @@
 # Obsidian MP3 Transcriber
-Transcribe YouTube videos and mp3 files into Obsidian notes.  The note includes both the metadata and the transcript text.
 
+## About
+Transcribe YouTube videos and mp3 files into Obsidian notes.  The finished Obsidian note includes both the metadata and the transcript text.
 <div style="text-align: center;">
   <img src="docs/images/30_000_foot.png" alt="30000 foot view" width="800" />
 </div>
 
-The **Person Using Plugin** inputs a YouTube URL or uploads an MP3 file through the **Plugin UI**, which the **Plugin Code (ObsidianMP3Transcriber)** sends to the **FastAPI service** for transcription. The **FastAPI service** processes the audio, generating the transcript and metadata, and sends them back to the **Plugin Code**. The **Plugin Code** then integrates this frontmatter and content into an Obsidian note stored within a folder within the **Person Using Plugin**'s vault.
+The **Person Using Plugin** inputs a YouTube URL or uploads an MP3 file through the **Plugin UI**, which the **Plugin Code (ObsidianMP3Transcriber)** sends to the **FastAPI service `/api/v1/process_audio endpoint`** for transcription. After posting to the `/api/v1/process_audio` endpoint, the plugin sets up an EventStream to use the SSE endpoint `/api/v1/stream`, which sends back the transcribed text in real-time. The **Plugin Code** then integrates this frontmatter and content into an Obsidian note stored within a folder within the **Person Using Plugin**'s vault.
+
+## Example
+
+### Bring up the UI
 
 
-# Quickstart
+## Quickstart
+Both the plugin and the FastAPI service need to be running.
+### Run Service
+The FastAPI service is run in a Docker container.
+#### Install Docker
+If you plan to run the service on your computer, you need Docker.  If Docker is not installed, [download](https://docs.docker.com/get-docker/) and install.
 
-## Run Service
+#### Download Image
+After the Docker Desktop has been installed, download the image:
+```
 
-## Install Plugin
+```
+### Install Plugin
 
-## Set Properties
+### Set Properties
 
-## Transcribe
+### Transcribe
 
 > **Note:** This section assumes:
 >- The service is running.
@@ -41,12 +54,15 @@ The filename will be the title of the YouTube video or the mp3 filename base in 
 
 
 # Contents of a Transcribed Note
-Consider the output after asking the plugin to transcribe the YouTube video, [LLM Prompt FORMATS make or break your LLM and RAG](https://www.youtube.com/watch?v=KbZDsrs5roI).  The plugin will create two sections in the note:
+  The plugin will create two sections in the note:
 - Frontmatter
 - Transcript text
 If the YouTube video has metadata on chapters, the transcript text will be sectioned into chapters.
 ## Frontmatter
 The plugin builds frontmatter based on the metadata and tuning parameters.
+### YouTube Video
+Consider the output after asking the plugin to transcribe the YouTube video, [LLM Prompt FORMATS make or break your LLM and RAG](https://www.youtube.com/watch?v=KbZDsrs5roI).
+
 <div style="text-align: center;">
   <img src="docs/images/frontmatter.png" alt="30000 foot view" width="600" />
 </div>

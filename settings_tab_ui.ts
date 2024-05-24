@@ -1,6 +1,7 @@
 // SettingsTab.ts
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import TranscriberPlugin from './main';
+import {logger} from './logger'
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TranscriberPlugin;
@@ -52,15 +53,26 @@ export class SettingsTab extends PluginSettingTab {
                         });
             });
 
-        // Toggle for test mode
+        // In your settings tab
         new Setting(containerEl)
-            .setName('Test mode')
-            .setDesc('Enable or disable test mode.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.test_mode)
+            .setName('Log Level')
+            .setDesc('Set the log level for the plugin')
+            .addDropdown(dropdown => dropdown
+                .addOption('error', 'Error')
+                .addOption('warn', 'Warning')
+                .addOption('info', 'Info')
+                .addOption('http', 'HTTP')
+                .addOption('verbose', 'Verbose')
+                .addOption('debug', 'Debug')
+                .addOption('silly', 'Silly')
+                .setValue(this.plugin.settings.logLevel || 'info')
                 .onChange(async (value) => {
-                    this.plugin.settings.test_mode = value;
+                    logger.level = value
+                    this.plugin.settings.logLevel = value;
                     await this.plugin.saveSettings();
                 }));
+
+
+
     }
 }

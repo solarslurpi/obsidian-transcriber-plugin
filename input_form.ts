@@ -3,18 +3,16 @@ import TranscriberPlugin from "./main";
 import { processAudio } from "./process_audio";
 import { isValidMP3, isValidYouTubeUrl, ensureFolder } from './utils';
 import './styles';
-import {logger} from './logger';
 import { Logger } from 'winston';
 
 export class InputForm extends Modal {
     // Instance properties.
     plugin: TranscriberPlugin;
+    // HTMLInputElement provides a way for users to select files from their local system.
     fileInput: HTMLInputElement;
     urlInput: TextComponent;
     healthCheckUrl: string;
     logger: Logger;
-
-
 
     constructor(app: App, plugin: TranscriberPlugin, logger:Logger) {
         super(app);
@@ -28,89 +26,100 @@ export class InputForm extends Modal {
     }
 
     onOpen() {
-        this.logger.debug('Opening the form.')
+        this.logger.debug('onOpen: Opening input dialog form.')
         this.render();
     }
 
     onClose() {
-        this.logger.debug('Closing the form.')
+        this.logger.debug('onClose: Closing input dialog form.')
         this.contentEl.empty();
     }
 
     private async handleClick() {
-        this.logger.debug('-> handleClick.');
+        this.logger.debug('handleClick:  invoked.');
 
-        if (this.fileInput) {
-            this.logger.debug(`fileInput: ${this.fileInput}`);
+        // Retrieve and log the URL input value after trimming
+        const urlValue = this.urlInput.getValue().trim();
+        this.logger.debug(`URL Input: "${urlValue}"`);
 
-            if (this.fileInput.files && this.fileInput.files.length > 0) {
-                this.logger.debug(`this.fileInput.files[0]: ${this.fileInput.files[0]}`);
-            }
+        // Check and log the file input
+        const files = this.fileInput?.files;
+        if (files && files.length > 0) {
+            this.logger.debug(`File Input: ${files[0].name} selected.`);
         } else {
-            this.logger.debug('fileInput is null.');
+            this.logger.debug('File Input: No file selected.');
         }
 
-        const urlValue = this.urlInput.getValue().trim();
-        const files = this.fileInput?.files;
-
+        // Ensure only one input method is used
         if (files && files.length > 0 && urlValue !== "") {
-            this.logger.debug('Detected both URL and file as input.');
+            this.logger.debug('Input Error: Detected both URL and file as input.');
             new Notice('Please use only one input method: either a URL or a file.');
-        // Handle an mp3 file upload.
         } else if (files && files.length > 0) {
-            this.logger.debug('Uploading file.');
             const file = files[0];
-            await this.handleFileUpload(file, this.plugin.settings.test_mode);
-        // Handle a YouTube url.
+            this.logger.debug(`Processing File Upload: ${file.name}`);
+            await this.handleFileUpload(file);
         } else if (urlValue !== "") {
-            this.logger.debug('Downloading YouTube.');
-            await this.handleUrlInput(urlValue, this.plugin.settings.test_mode);
+            this.logger.debug(`Processing YouTube URL: ${urlValue}`);
+            await this.handleUrlInput(urlValue);
         } else {
-            this.logger.debug('Hit Submit without entering YouTube URL or file.');
+            // Handle case where no input was provided
+            this.logger.debug('Input Error: No YouTube URL or file selected.');
             new Notice('Please enter a URL or select a file.');
         }
     }
+    private async handleFileUpload(file: File) {
+        this.logger.debug('handleFileUpload: invoked.');
+        this.logger.debug(`File Input: ${file.name} selected.`);
 
-
-
-    private async handleFileUpload(file: File, test_mode: boolean) {
-        this.logger.debug(`-> handleFileUpload - File selected: ${file.name}`);
         // Make a string check if the name is valid.
-        if (isValidMP3(file.name, test_mode)) {
+        if (isValidMP3(file.name)) {
+            this.logger.debug(`Validation: File is a valid MP3 - ${file.name}`);
+
             const apiUrl = this.plugin.settings.transcriberApiUrl;
             const folderPath = this.plugin.settings.transcriptsFolder;
+
             try {
                 await processAudio(
                     file,
                     apiUrl,
                     folderPath,
-                    test_mode,
                     this.plugin.settings.audioQuality
                 );
+                this.logger.debug(`Processing Success: File processed successfully - ${file.name}`);
             } catch (error) {
-                new Notice(`Error attempting to processAudio. ${error}`);
-                this.logger.error(`Error attempting to processAudio. ${error}`);
+                new Notice(`Error: Attempting to process audio file - ${file.name}. ${error}`);
+                this.logger.error(`Error: Attempting to process audio file - ${file.name}. Error: ${error}`);
             }
+        } else {
+            this.logger.debug(`Validation Error: Invalid MP3 file - ${file.name}`);
+            new Notice(`Invalid MP3 file: ${file.name}`);
         }
     }
 
-    private async handleUrlInput(url: string, test_mode: boolean) {
-        this.logger.debug(`URL entered: ${url}`);
-        if (isValidYouTubeUrl(url, test_mode)) {
-            await processAudio(
-                url,
-                this.plugin.settings.transcriberApiUrl,
-                this.plugin.settings.transcriptsFolder,
-                test_mode,
-                this.plugin.settings.audioQuality
-            );
+    private async handleUrlInput(url: string) {
+        this.logger.debug('-> handleUrlInput invoked.');
+        this.logger.debug(`URL Input: ${url}`);
+
+        if (isValidYouTubeUrl(url)) {
+            this.logger.debug(`Validation: URL is a valid YouTube URL - ${url}`);
+
+            try {
+                await processAudio(
+                    url,
+                    this.plugin.settings.transcriberApiUrl,
+                    this.plugin.settings.transcriptsFolder,
+                    this.plugin.settings.audioQuality
+                );
+                this.logger.debug(`Processing Success: YouTube URL processed successfully - ${url}`);
+            } catch (error) {
+                new Notice(`Error: Attempting to process YouTube URL - ${url}. ${error}`);
+                this.logger.error(`Error: Attempting to process YouTube URL - ${url}. Error: ${error}`);
+            }
         } else {
-            this.logger.debug(`The YouTube URL: ${this.plugin.settings.transcriberApiUrl}`)
+            this.logger.debug(`Validation Error: Invalid YouTube URL - ${url}`);
             new Notice("Invalid YouTube URL.");
         }
     }
-
-
 
     async checkServiceAvailability(): Promise<boolean> {
         try {
@@ -145,7 +154,6 @@ export class InputForm extends Modal {
         const submitButton = new ButtonComponent(buttonContainer)
             .setButtonText('Submit')
             .onClick(async () => {
-                this.logger.debug('Submit button clicked.');
 
                 // Ensure service availability before proceeding
                 if (!(await this.checkServiceAvailability())) {

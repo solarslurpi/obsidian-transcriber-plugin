@@ -3,7 +3,7 @@ import { Vault } from 'obsidian';
 import { ObsidianTransport } from './obsidian_transport';
 
 const logger = createLogger({
-  level: 'debug',
+  level: 'info', // Default level, will be updated by initializeLogger
   format: format.combine(
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`),
@@ -12,25 +12,31 @@ const logger = createLogger({
   transports: [new transports.Console()]
 });
 
-export async function initializeLogger(vault: Vault, logDir: string, logFilename: string) {
-  const logFilePath = `${logDir}/${logFilename}`;
+export async function initializeLogger(vault: Vault, logDir: string, logFilename: string, logLevel: string) {
+  logger.level = logLevel; // Update the logger level
 
-  const obsidianTransport = new ObsidianTransport({
-    vault,
-    logFilePath,
-    format: format.combine(
-      format.uncolorize(),
-      format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      format.json(),
-      format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`)
-    )
-  });
+  if (vault && logDir && logFilename) {
+    const logFilePath = `${logDir}/${logFilename}`;
+    const obsidianTransport = new ObsidianTransport({
+      vault,
+      logFilePath,
+      format: format.combine(
+        format.uncolorize(),
+        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        format.json(),
+        format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`)
+      )
+    });
 
-  // Initialize the log file with YAML frontmatter if it doesn't exist
-  await obsidianTransport.initializeLogFile();
+    // Initialize the log file with YAML frontmatter if it doesn't exist
+    await obsidianTransport.initializeLogFile();
 
-  // Add the Obsidian transport
-  logger.add(obsidianTransport);
+    // Add the Obsidian transport
+    logger.add(obsidianTransport);
+
+    // Log to confirm initialization
+    logger.debug('initializeLogger: ObsidianTransport initialized and added to logger.');
+  }
 }
 
 export { logger };

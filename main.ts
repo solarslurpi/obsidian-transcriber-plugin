@@ -9,13 +9,15 @@ export default class TranscriberPlugin extends Plugin {
     settings: PluginSettings;
 
     async onload() {
-        // Load plugin settings before initializing the logger
+        // Load Settings
         await this.loadSettings();
         console.log('Settings have been loaded. On to setting up logging file.')
 
+        // Initialize logging to the console as well as an obsidian note.
         const logDir = this.settings.logDir;  // Use the log directory from settings
-        console.log(`Log directory: ${logDir}`);
-        await initializeLogger(this.app.vault, logDir, 'transcriber_log.md');  // Initialize logger with the file path
+        // Setup logger with the level from settings
+        const logLevel = this.settings.logLevel || 'info';
+        await initializeLogger(this.app.vault, logDir, 'transcriber_log.md', logLevel);
         // Add settings tab and commands
         this.addSettingTab(new SettingsTab(this.app, this));
         this.addCommand({
@@ -23,7 +25,7 @@ export default class TranscriberPlugin extends Plugin {
             name: 'Transcribe Audio',
             callback: () => this.userInput()
         });
-
+        logger.debug('onload() has completed.');
     }
 
     async loadSettings() {
@@ -31,11 +33,6 @@ export default class TranscriberPlugin extends Plugin {
         // Check on the folders that will be used.
         await ensureFolder(this.settings.transcriptsFolder);
         await ensureFolder(this.settings.logDir);
-        const now = new Date();
-        const formattedDate = now.toISOString();
-        logger.info(`Starting Run at ${formattedDate}`);
-        logger.debug('hello');
-        logger.debug('onload() has completed.');
     }
 
     async saveSettings() {
@@ -44,7 +41,7 @@ export default class TranscriberPlugin extends Plugin {
     }
 
     async userInput(): Promise<void> {
-        logger.debug("Prompting for user input...");
+        logger.debug("Opening InputForm");
         new InputForm(this.app, this, logger).open();
     }
 }
