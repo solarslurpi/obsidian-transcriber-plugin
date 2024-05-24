@@ -78,112 +78,33 @@ If a transcript originated from a YouTube video, it might be lucky enough to be 
 
 ### Example
 Consider the YouTube video, [Bluelab Pulse Meter Review](https://www.youtube.com/watch?v=KbZDsrs5roI).  The video has been segmented into chapters:
-<div>
-  <img src="docs/images/youtube_metadata.png" alt="30000 foot view" width="800" />
+<div style="text-align: center;">
+  <img src="docs/images/youtube_metadata.png" alt="image of metadata" width="800" />
 </div>
 
 The transcription service takes the audio content and builds the content section following the frontmatter.
-<div>
-  <img src="docs/images/transcribed_chapters.png" alt="30000 foot view" width="700" />
+<div style="text-align: center;">
+  <img src="docs/images/transcribed_chapters.png" alt="image of transcribed chapters" width="700" />
 </div>
 
+# Settings
+Obsidian renders a settings modal dialog that manages properties that can be changed that affect the outcome of the transcript.
+<div style="text-align: center;">
+  <img src="docs/images/obsidian-transcriber-settings.jpg" alt="image of obsidian transcriber settings modal dialog"  />
+</div>
+The settings include:
+- **Transcripts folder**:  The folder within the vault where the transcripts will be written to.  If the folder does not exist, the plugin will create it. THe default value is `transcripts`.
+- **API endpoint URL**: The FastAPI endpoint to the audio processing service.  By default, this value is set to a local installation of the FastAPI service - `http://127.0.0.1:8000/api/v1/process_audio`.
+- **Audio Quality**: The FastAPI service uses whisper to translate the audio into text.  The plugin exposes the ability to set the audio quality to different settings from `tiny` to `large`.
+- **Log level**: Logging is critical to debugging. By default logging is set to `debug` in order to be a more supportive environment, particularly when the plugin is first deployed.  The intent is to have the plugin be less frustrating to debug by having better control of the log levels and to heavily sprinkle debug log statements throughout the code.  The plugin uses the winston logger with a custom transport that logs the log records to a note within obsidian as frontmatter.  This way, a Dataview can be used to review the notes.  See logging for more details.
 
+# Code
+Two GitHub projects are involved in the code:
 
+## Loading the Plugin
+[main.ts](https://github.com/solarslurpi/obsidian-transcriber-plugin/blob/main/main.ts) contains the plugin's `onload()` function.
+<div style="text-align: center;">
+  <img src="docs/images/onload_main_ts.png" alt="main.ts onload() drawing made in excalidraw"  />
+</div>
 
-
-
-
-This is a sample plugin for Obsidian (https://obsidian.md).
-
-This project uses Typescript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in Typescript Definition format, which contains TSDoc comments describing what it does.
-
-**Note:** The Obsidian API is still in early alpha and is subject to change at any time!
-
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
-
-## First time developing plugins?
-
-Quick starting guide for new plugin devs:
-
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
-
-## Releasing new releases
-
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
-
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
-
-## Adding your plugin to the community plugin list
-
-- Check https://github.com/obsidianmd/obsidian-releases/blob/master/plugin-review.md
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
-
-If you have multiple URLs, you can also do:
-
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
-
-## API Documentation
-
-See https://github.com/obsidianmd/obsidian-api
+The code starts out by loading the settings defined by the plugin. `loadSettings()` merges default settings with any saved settings using `Object.assign`. The [PluginSettings interface](https://github.com/solarslurpi/obsidian-transcriber-plugin/blob/main/plugin_settings.ts) defines the settings structure, and `DEFAULT_SETTINGS` provides initial values.  The obsidian UI manages exposed settings by rendering a settings tab where users can view and modify them. Settings not exposed to the UI, like `logDir`, are managed internally within the plugin and not presented to the user.
