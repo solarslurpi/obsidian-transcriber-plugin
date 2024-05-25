@@ -20,6 +20,8 @@ export default class TranscriberPlugin extends Plugin {
         await initializeLogger(this.app.vault, logDir, 'transcriber_log.md', logLevel);
         // Add settings tab and commands
         this.addSettingTab(new SettingsTab(this.app, this));
+        // Add ribbon icon
+        this.addRibbonIcon('flower', 'Transcribe Audio', () => this.userInput());
         this.addCommand({
             id: 'transcribe_audio',
             name: 'Transcribe Audio',

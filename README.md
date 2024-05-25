@@ -1,14 +1,70 @@
-# Obsidian MP3 Transcriber
+# Obsidian Transcriber Plugin
 
-## About
-Transcribe YouTube videos and mp3 files into Obsidian notes.  The finished Obsidian note includes both the metadata and the transcript text.
-<div style="text-align: center;">
-  <img src="docs/images/30_000_foot.png" alt="30000 foot view" width="800" />
+## Description
+The Obsidian Transcriber plugin transcribes MP3 audio files and YouTube videos directly within Obsidian. It offers seamless integration with Obsidian and provides [features](#features) that enhance transcription quality and user experience through customizable settings, rich metadata, and easy access to transcribed content.
+
+<!-- Note section -->
+<div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
+  <strong>Note:</strong> The FastAPI service that handles YouTube downloading and transcribing must be running, and the API endpoint must be correctly set to access the `/api/v1/process_audio` endpoint. By default, the plugin assumes the FastAPI service is running locally. The FastAPI service is maintained in a separate project. For more details on running the service, refer to the [FastAPI service repository](https://github.com/your-fastapi-repo).
 </div>
 
-The **Person Using Plugin** inputs a YouTube URL or uploads an MP3 file through the **Plugin UI**, which the **Plugin Code (ObsidianMP3Transcriber)** sends to the **FastAPI service `/api/v1/process_audio endpoint`** for transcription. After posting to the `/api/v1/process_audio` endpoint, the plugin sets up an EventStream to use the SSE endpoint `/api/v1/stream`, which sends back the transcribed text in real-time. The **Plugin Code** then integrates this frontmatter and content into an Obsidian note stored within a folder within the **Person Using Plugin**'s vault.
+## Features
+- Transcribes YouTube videos and mp3 files into Obsidian notes.
+- Transcribed note includes the rich metadata found on YouTube videos as well as mp3 metadata as [YAML frontmatter](https://www.wundertech.net/yaml-front-matter-in-obsidian/).  Adding the metadata can significantly enhance the quality of the transcript.
+- Customizable settings include:
+  - **Transcripts folder**:  The folder within the vault where the transcripts will be written to.  If the folder does not exist, the plugin will create it. THe default value is `transcripts`.
+  - **API endpoint URL**: The FastAPI endpoint to the audio processing service.  By default, this value is set to a local installation of the FastAPI service - `http://127.0.0.1:8000/api/v1/process_audio`.
+  - **Audio Quality**: The FastAPI service uses whisper to translate the audio into text.  The plugin exposes the ability to set the audio quality to different settings from `tiny` to `large`.  The larger the `whisper` model size, the higher the transcription quality, though this comes with increased processing time and resource usage. The default value is `medium`.
+  - **Log level**: Logging is critical to debugging. By default logging is set to `debug`.
 
-## Example
+
+## Demo
+
+![basic functionality](https://raw.githubusercontent.com/tgrosinger/advanced-tables-obsidian/main/resources/screenshots/basic-functionality.gif)
+
+## Installation
+
+### From Obsidian
+1. Open Obsidian.
+2. Go to `Settings` > `Community plugins` > `Browse`.
+3. Search for "Obsidian Transcriber".
+4. Click `Install`.
+5. Once installed, enable the plugin in the `Community plugins` section.
+
+### Manual Installation
+1. Download the latest release from the [GitHub releases page](https://github.com/your-repo/obsidian-transcriber/releases).
+2. Unzip the download.
+3. Copy the `obsidian-transcriber` folder to your vault's plugins folder: `<vault>/.obsidian/plugins/`.
+4. Enable the plugin in the Obsidian settings under `Community plugins`.
+
+## Usage
+1. Open the command palette with `Ctrl+P` or `Cmd+P`.
+2. Type `Transcribe` and select the `Transcribe Audio` command.
+3. Choose an audio file or enter a YouTube URL to transcribe.
+4. Tap or click on the `Submit` button.
+
+## Configuration
+You can configure the plugin settings by navigating to `Settings` > `Plugin Options` > `Obsidian Transcriber`. Available settings include:
+- **API Endpoint URL**: Specify the URL endpoint for the transcription service.  The default setting is `http://127.0.0.1:8000/api/v1/process_audio`.  Change the URL component to be the URL to the IP address and port that is running the FastAPI service.
+- **Audio Quality**: Select the desired audio quality (tiny, small, medium, large).
+- **Log Level**: Set the log level for the plugin (error, warn, info, http, verbose, debug, silly).
+
+## Commands
+- **Transcribe Audio**: Open a file dialog to select an audio file or enter a YouTube URL for transcription.
+- **Set Transcription Language**: Set the default language for future transcriptions.
+
+## Examples
+Here's an example of how to use the plugin to transcribe an audio note:
+1. Record your meeting or lecture.
+2. Save the audio file to your computer.
+3. Use the `Transcribe Audio` command in Obsidian to convert the audio to text.
+
+## Troubleshooting
+- **No Input Provided**: Ensure you either provide a valid YouTube URL or select an audio file.
+- **Unsupported File Format**: Make sure the audio file format is supported.
+- **Connection Issues**: Verify your internet connection if using an online transcription service.
+- **Logging**: Set the log level to `debug` or `silly` for more detailed output if you encounter issues.
+
 
 ### Bring up the UI
 
@@ -108,3 +164,6 @@ Two GitHub projects are involved in the code:
 </div>
 
 The code starts out by loading the settings defined by the plugin. `loadSettings()` merges default settings with any saved settings using `Object.assign`. The [PluginSettings interface](https://github.com/solarslurpi/obsidian-transcriber-plugin/blob/main/plugin_settings.ts) defines the settings structure, and `DEFAULT_SETTINGS` provides initial values.  The obsidian UI manages exposed settings by rendering a settings tab where users can view and modify them. Settings not exposed to the UI, like `logDir`, are managed internally within the plugin and not presented to the user.
+
+## Ribbon Icon
+The easieast way to add a ribbon icon is to use one of the built in icons.  Obsidian uses [Lucide Icons](https://lucide.dev/icons/).  According to the [Obsidian documentation](https://docs.obsidian.md/Plugins/User+interface/Icons), *Only icons up to v0.292.0 are supported at this time.*
