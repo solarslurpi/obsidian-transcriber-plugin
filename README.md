@@ -3,7 +3,7 @@
 ## Description
 The Obsidian Transcriber plugin transcribes MP3 audio files and YouTube videos directly within Obsidian. It offers seamless integration with Obsidian and provides [features](#features) that enhance transcription quality and user experience through customizable settings, rich metadata, and easy access to transcribed content.
 
-<!-- Note section -->
+<!-- Note section, Blue -->
 <div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
   <strong>Note:</strong> The FastAPI service that handles YouTube downloading and transcribing must be running, and the API endpoint must be correctly set to access the `/api/v1/process_audio` endpoint. By default, the plugin assumes the FastAPI service is running locally. The FastAPI service is maintained in a separate project. For more details on running the service, refer to the [FastAPI service repository](https://github.com/your-fastapi-repo).
 </div>
@@ -18,9 +18,21 @@ The Obsidian Transcriber plugin transcribes MP3 audio files and YouTube videos d
   - **Log level**: Logging is critical to debugging. By default logging is set to `debug`.
 
 
+
 ## Demo
 
-![basic functionality](https://raw.githubusercontent.com/tgrosinger/advanced-tables-obsidian/main/resources/screenshots/basic-functionality.gif)
+<div style="text-align: center;">
+  <img src="https://github.com/solarslurpi/obsidian-transcriber-plugin/raw/main/docs/docs/obsidian-transcriber.gif" alt="Obsidian Transcriber" style="width: 700px;">
+</div>
+
+The demo showed:
+- The key/values of the frontmatter are derived from YouTube metadata and `whisper` tuning parameters. These properties benefit search (e.g., tags) and provide context about the video (e.g., description, tags).
+- If a transcript originates from a YouTube video with chapters, the transcript will be segmented accordingly. Each chapter will include its title, start and stop times, and the corresponding text.
+
+<!-- Note section, Grey -->
+<div style="padding: 10px; border-left: 3px solid #A5AFAF; background-color: #232727;">
+  <strong>Note:</strong> Some, but unfortunately not all YouTube videos, are segmented into chapters.  Along with the start and end time, each chapter comes with a title.  There are two ways a video can have chapters.  The author can manually create chapters by adding timestamps and titles.  YouTube can also generate chapters algorithmically using techniques like Natural Language Processing (NLP), visual and audio cues, and user interaction data..
+</div>
 
 ## Installation
 
@@ -38,10 +50,16 @@ The Obsidian Transcriber plugin transcribes MP3 audio files and YouTube videos d
 4. Enable the plugin in the Obsidian settings under `Community plugins`.
 
 ## Usage
-1. Open the command palette with `Ctrl+P` or `Cmd+P`.
-2. Type `Transcribe` and select the `Transcribe Audio` command.
-3. Choose an audio file or enter a YouTube URL to transcribe.
-4. Tap or click on the `Submit` button.
+To use the plugin, you have two options to get to the plugin's UI. First, you can access the plugin commands by opening the command palette with `Ctrl+P` or `Cmd+P and typing `transcriber`. Second, you can use the plugin's icon in the ribbon on the left side of the Obsidian interface.
+
+<!-- Note section, Grey -->
+<div style="padding: 10px; border-left: 3px solid #A5AFAF; background-color: #232727;">
+  <strong>Note:</strong>  If the icon is not visible, ensure that the plugin is properly installed and enabled. Then, check the visible icons in the ribbon by right-clicking on an empty space in the ribbon to see which icons are displayed and adjust as needed.
+</div>
+
+Once in the UI:
+- Choose an audio file or enter a YouTube URL to transcribe.
+- Tap or click on the `Submit` button.
 
 ## Configuration
 You can configure the plugin settings by navigating to `Settings` > `Plugin Options` > `Obsidian Transcriber`. Available settings include:
@@ -51,13 +69,8 @@ You can configure the plugin settings by navigating to `Settings` > `Plugin Opti
 
 ## Commands
 - **Transcribe Audio**: Open a file dialog to select an audio file or enter a YouTube URL for transcription.
-- **Set Transcription Language**: Set the default language for future transcriptions.
 
-## Examples
-Here's an example of how to use the plugin to transcribe an audio note:
-1. Record your meeting or lecture.
-2. Save the audio file to your computer.
-3. Use the `Transcribe Audio` command in Obsidian to convert the audio to text.
+
 
 ## Troubleshooting
 - **No Input Provided**: Ensure you either provide a valid YouTube URL or select an audio file.

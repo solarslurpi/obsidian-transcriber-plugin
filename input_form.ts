@@ -87,12 +87,12 @@ export class InputForm extends Modal {
                 );
                 this.logger.debug(`Processing Success: File processed successfully - ${file.name}`);
             } catch (error) {
-                new Notice(`Error: Attempting to process audio file - ${file.name}. ${error}`);
+                new Notice(`Error: Attempting to process audio file - ${file.name}. ${error}`, 0);
                 this.logger.error(`Error: Attempting to process audio file - ${file.name}. Error: ${error}`);
             }
         } else {
             this.logger.debug(`Validation Error: Invalid MP3 file - ${file.name}`);
-            new Notice(`Invalid MP3 file: ${file.name}`);
+            new Notice(`Error: Invalid MP3 file: ${file.name}`, 0);
         }
     }
 
@@ -112,12 +112,12 @@ export class InputForm extends Modal {
                 );
                 this.logger.debug(`Processing Success: YouTube URL processed successfully - ${url}`);
             } catch (error) {
-                new Notice(`Error: Attempting to process YouTube URL - ${url}. ${error}`);
+                new Notice(`Error: Attempting to process YouTube URL - ${url}. ${error}`, 0);
                 this.logger.error(`Error: Attempting to process YouTube URL - ${url}. Error: ${error}`);
             }
         } else {
             this.logger.debug(`Validation Error: Invalid YouTube URL - ${url}`);
-            new Notice("Invalid YouTube URL.");
+            new Notice("Error: Invalid YouTube URL.", 0);
         }
     }
 
@@ -158,7 +158,7 @@ export class InputForm extends Modal {
                 // Ensure service availability before proceeding
                 if (!(await this.checkServiceAvailability())) {
                     this.logger.error('The FastAPI service is not available.');
-                    new Notice('ERROR! The FastAPI service is not available.');
+                    new Notice('Error: The FastAPI service is not available.', 0);
                     return;
                 }
 
