@@ -11,13 +11,14 @@ export default class TranscriberPlugin extends Plugin {
     async onload() {
         // Load Settings
         await this.loadSettings();
-        console.log('Settings have been loaded. On to setting up logging file.')
+        console.log('obsidian-transcriber: Settings loaded successfully. ')
 
         // Initialize logging to the console as well as an obsidian note.
         const logDir = this.settings.logDir;  // Use the log directory from settings
         // Setup logger with the level from settings
         const logLevel = this.settings.logLevel || 'info';
         await initializeLogger(this.app.vault, logDir, 'transcriber_log.md', logLevel);
+        logger.debug('obsidian-transcriber: Logger loaded successfully. ')
         // Add settings tab and commands
         this.addSettingTab(new SettingsTab(this.app, this));
         // Add ribbon icon
@@ -27,7 +28,7 @@ export default class TranscriberPlugin extends Plugin {
             name: 'Transcribe Audio',
             callback: () => this.userInput()
         });
-        logger.debug('onload() has completed.');
+        logger.debug('obsidian-transcriber: Plugin loaded successfully.');
     }
 
     async loadSettings() {
@@ -38,12 +39,12 @@ export default class TranscriberPlugin extends Plugin {
     }
 
     async saveSettings() {
-        logger.debug("Saving settings...");
+        logger.debug("main.saveSettings(): start.");
         await this.saveData(this.settings);
     }
 
     async userInput(): Promise<void> {
-        logger.debug("Opening InputForm");
+        logger.debug("main.userInput: start");
         new InputForm(this.app, this, logger).open();
     }
 }

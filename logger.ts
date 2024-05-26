@@ -34,8 +34,6 @@ export async function initializeLogger(vault: Vault, logDir: string, logFilename
     // Add the Obsidian transport
     logger.add(obsidianTransport);
 
-    // Log to confirm initialization
-    logger.debug('initializeLogger: ObsidianTransport initialized and added to logger.');
   }
 }
 

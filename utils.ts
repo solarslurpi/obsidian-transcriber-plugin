@@ -10,17 +10,11 @@ export function isValidYouTubeUrl(url: string): boolean {
 
 export function isValidMP3(filePath: string): boolean {
     const isValid = filePath.endsWith('.mp3');
-        if (isValid) {
-            logger.debug(`valid mp3 filepath`);
-        } else {
-            logger.debug(`Not a valid mp3 filepath`);
-        }
     return isValid;
 }
 
 export async function  ensureFolder(folderPath: string) {
-    logger.debug("--> ensureFolder");
-    logger.debug(`folder path: ${folderPath}`);
+    logger.debug(`utils.ensureFolder.folder path: ${folderPath}`);
     try {
         await this.app.vault.createFolder(folderPath);
         logger.debug("Transcripts folder created successfully.");
@@ -29,7 +23,7 @@ export async function  ensureFolder(folderPath: string) {
         if (error.message.includes("Folder already exists.")) {
             return true;
         } else {
-            logger.error(`Failed to create transcripts folder: ${error}`);
+            logger.error(`utils.ensureFolder.Failed to create transcripts folder: ${error}`);
             throw new Error(
                 "Failed to create transcripts folder: " + error.message
             );

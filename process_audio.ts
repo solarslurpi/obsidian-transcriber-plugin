@@ -1,150 +1,167 @@
-// Import necessary functions and types
 import { Notice, TFile } from 'obsidian';
-import {logger} from './logger';
+import { logger } from './logger';
 
 interface SSEState {
     chapters: string[];
     frontmatter: string;
     fullPath: string;
     numChapters: number;
+    chapterCounter: number,
     transcriptTime?: string;
     isClosed: boolean;
-    isComplete: boolean;
 }
 
 // Overloads
-export function processAudio(file: File, apiUrl: string, folderPath: string,  audioQuality: string): Promise<void>;
+export function processAudio(file: File, apiUrl: string, folderPath: string, audioQuality: string): Promise<void>;
 export function processAudio(url: string, apiUrl: string, folderPath: string, audioQuality: string): Promise<void>;
 
 // Implementation
 export async function processAudio(input: File | string, apiUrl: string, folderPath: string, audioQuality: string): Promise<void> {
     new Notice('Starting to process audio.');
     try {
-        if (input instanceof File) {
-            logger.debug(`Processing audio input (File): ${input.name} with endpoint URL: ${apiUrl}`);
-            await processFile(input, apiUrl, folderPath, audioQuality);
-        } else if (typeof input === 'string') {
-            logger.debug(`Processing audio input (URL): ${input} with endpoint URL: ${apiUrl}`);
-            await processUrl(input, apiUrl, folderPath, audioQuality);
-        } else {
-            throw new Error('Invalid input type');
-        }
+        const formData = createFormData(input, audioQuality);
+        const response = await sendTranscriptionRequest(apiUrl, formData);
+        await handleResponse(apiUrl, response, folderPath);
     } catch (error) {
-        logger.error(`Error during transcription request: ${error}`);
-        new Notice('Error in transcription request.');
+        logger.error(`process_audio.processAudio: Error during transcription request: ${error}`);
+        new Notice(`Error during transcription request: ${error}`, 10000);
     }
 }
 
-async function processFile(file: File, apiUrl: string, folderPath: string, audioQuality: string): Promise<void> {
+function createFormData(input: File | string, audioQuality: string): FormData {
     const formData = new FormData();
-    formData.append("file", file);
+    if (input instanceof File) {
+        logger.debug(`process_audio.createFormData: Processing audio input (File): ${input.name}`);
+        formData.append("file", input);
+    } else if (typeof input === 'string') {
+        logger.debug(`process_audio.createFormData: Processing audio input (URL): ${input}`);
+        formData.append("youtube_url", input);
+    } else {
+        throw new Error('Invalid input type');
+    }
     formData.append("audio_quality", audioQuality);
-
-    logger.debug("Process File:  Sending POST with File attachment.");
-    const response = await fetch(`${apiUrl}`, {
-        method: 'POST',
-        body: formData
-    });
-
-    await handleResponse(apiUrl, response, folderPath);
+    return formData;
 }
 
-async function processUrl(url: string, apiUrl: string, folderPath: string, audioQuality: string): Promise<void> {
-    const formData = new FormData();
-    formData.append("youtube_url", url);
-    formData.append("audio_quality", audioQuality);
-
-    logger.debug("Process URL. Sending POST with URL.");
-    const response = await fetch(`${apiUrl}`, {
+async function sendTranscriptionRequest(apiUrl: string, formData: FormData): Promise<Response> {
+    logger.debug("process_audio.sendTranscriptionRequest: Sending POST request for transcription.");
+    const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData
     });
-
-    await handleResponse(apiUrl, response, folderPath);
+    return response;
 }
 
 async function handleResponse(apiUrl: string, response: Response, folderPath: string): Promise<void> {
     if (!response.ok) {
-        logger.debug(`handleResponse: Response not ok: ${response}`);
+        const errorMessage = `process_audio.handleResponse: Network response was not ok: ${response.statusText}`;
+        logger.error(errorMessage);
+        new Notice(errorMessage, 10000);
         throw new Error('Network response was not ok');
-    } else {
-        logger.debug('Transcription request POST was successful.')
     }
-
-    // Start SSE after successfully initiating the transcription process
+    const feedback = await response.json()
+    logger.debug(`process_audio.handleResponse: Post response: ${feedback.message}`);
     handleSSE(apiUrl, folderPath);
 }
 
 function handleSSE(apiUrl: string, folderPath: string): void {
-
     const sseUrl = apiUrl.replace("/process_audio", "/stream");
-    const eventSource = new EventSource(`${sseUrl}`);
-    logger.debug(`handleSSE: eventsource ${sseUrl} has been created.`)
+    const eventSource = new EventSource(sseUrl);
+    logger.debug(`process_audio.handleSSE: EventSource created at ${sseUrl}`);
+
     const state: SSEState = {
         chapters: [],
         frontmatter: '',
         fullPath: '',
         numChapters: 0,
-        isClosed: false,
-        isComplete: false
+        chapterCounter: 0,
+        isClosed: false
     };
 
-    eventSource.onmessage = (event) => {
-        if (state.isClosed) {
-            logger.debug(`Received message after SSE is closed: ${event.data}`);
-            return;
-            }
-
-        const data = JSON.parse(event.data);
-        logger.debug(`----Received event data: ${event.data}`);
-
-        if (data.status) {
-            logger.debug(`Status: ${data.status}`);
-            new Notice(data.status);
-        }
-        if (data.error) {
-            eventSource.close();
-            state.isClosed = true;
-            logger.error(`Error: ${data.error}`);
-            new Notice(data.error, 10000);
-        }
-        if (data.done) {
-            eventSource.close();
-            state.isClosed = true;
-            state.isComplete = true;
-            logger.debug('Transcription process finished.');
-            saveTranscript(state);
-            new Notice('Transcription process finished.');
-        }
-        if (data.filename) {
-            const transcript_filename = `${data.filename}.md`;
-            state.fullPath = `${folderPath}/${transcript_filename}`;
-            logger.debug(`Transcript folder: ${state.fullPath}`);
-        }
-        if (data.frontmatter) {
-            state.frontmatter = data.frontmatter;
-            logger.debug(`Frontmatter: ${state.frontmatter}`);
-        }
-        if (data.num_chapters) {
-            state.numChapters = data.num_chapters;
-            logger.debug(`Number of chapters: ${data.num_chapters}`);
-        }
-        if (data.chapter) {
-            state.chapters.push(data.chapter);
-            logger.debug(`Chapter: ${data.chapter.substring(0, 10).replace(/\n/g, '')}`);
-
-        }
+    eventSource.onerror = (event: MessageEvent) => {
+        logger.error(`process_audio.handleSSE: EventSource encountered an error.`);
+        closeEventSource(eventSource, state);
+        new Notice('Error occurred. Stopping SSE.', 10000);
     };
+
+    eventSource.onmessage = (event) => handleSSEMessage(event, eventSource, state, folderPath);
 }
 
-function saveTranscript(state: SSEState) {
-    if (!state.fullPath) {
-        new Notice('A transcript file path was not provided by the server. Please report this issue to the plugin author.', 10000);
-        logger.error('A transcript file path was not provided by the server.');
+function handleSSEMessage(event: MessageEvent, eventSource: EventSource, state: SSEState, folderPath: string): void {
+    if (state.isClosed) {
+        logger.debug(`process_audio.handleSSEMessage: Received message after SSE is closed: ${event.data}`);
         return;
     }
-    new Notice(`Saving transcript to ${state.fullPath}.`);
-    logger.debug(`Saving transcript to ${state.fullPath}.`);
+
+    const data = JSON.parse(event.data);
+
+    if (data.status) {
+        logger.debug(`process_audio.handleSSEMessage: Status: ${data.status}`);
+        new Notice(data.status);
+    }
+
+    if (data.done) {
+        logger.debug('process_audio.handleSSEMessage: Transcription process finished.');
+        saveTranscript(state, folderPath);
+        closeEventSource(eventSource, state);
+        new Notice('Transcription process finished.');
+
+    }
+    updateState(data, state, folderPath);
+}
+
+function closeEventSource(eventSource: EventSource, state: SSEState): void {
+    if (!state.isClosed) {
+        eventSource.close();
+        resetSSEState(state, true);
+        logger.debug('process_audio.closeEventSource: EventSource closed.');
+    }
+}
+
+function resetSSEState(state: SSEState, isClosed: boolean): void {
+    state.chapters = [];
+    state.frontmatter = '';
+    state.fullPath = '';
+    state.numChapters = 0;
+    state.chapterCounter = 0;
+    state.isClosed = isClosed;
+}
+function updateState(data: any, state: SSEState, folderPath: string): void {
+    logger.debug(`data: ${data}`)
+    if (data.basefilename) {
+        state.fullPath = `${folderPath}/${data.basefilename}.md`;
+        logger.debug(`process_audio.updateState: Transcript path set: ${state.fullPath}`);
+        new Notice(`Transcript path set: ${state.fullPath}`);
+    }
+    if (data.frontmatter) {
+        state.frontmatter = data.frontmatter;
+        logger.debug(`process_audio.updateState: Frontmatter set.`);
+        new Notice(`Finished Frontmatter`);
+    }
+    if (data.num_chapters) {
+        state.numChapters = data.num_chapters;
+        logger.debug(`process_audio.updateState: Number of chapters: ${data.num_chapters}`);
+        new Notice(`Processing Chapters. Total number: ${data.num_chapters}`)
+    }
+    if (data.chapter) {
+        state.chapterCounter += 1;
+        state.chapters.push(data.chapter);
+        // const chapter = data.chapter.substring(0, 10).replace(/\n/g, '');
+        logger.debug(`process_audio.updateState: Chapter ${state.chapterCounter} added to transcript.`);
+        new Notice(`Chapter ${state.chapterCounter} added to transcript.`);
+    }
+}
+
+function saveTranscript(state: SSEState, folderPath: string): void {
+    if (!state.fullPath) {
+        const errorMessage = 'A transcript file path was not provided by the server. Please report this issue to the plugin author.';
+        logger.error(`process_audio.saveTranscript: ${errorMessage}`);
+        new Notice(errorMessage, 10000);
+        return;
+    }
+
+    logger.debug(`process_audio.saveTranscript: Saving transcript to ${state.fullPath}`);
+    new Notice(`Saving transcript to ${state.fullPath}`)
     try {
         let file = this.app.vault.getAbstractFileByPath(state.fullPath) as TFile;
         let content = '';
@@ -165,7 +182,10 @@ function saveTranscript(state: SSEState) {
         } else {
             this.app.vault.create(state.fullPath, content);
         }
+
+        new Notice(`Transcript saved to ${state.fullPath}`);
     } catch (error) {
-        logger.error(`Error saving transcript: ${error.message}`);
+        logger.error(`process_audio.saveTranscript: Error saving transcript: ${error.message}`);
+        new Notice(`Error saving transcript: ${error.message}`, 10000);
     }
 }
