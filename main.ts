@@ -39,8 +39,8 @@ export default class TranscriberPlugin extends Plugin {
     }
 
     async saveSettings() {
-        logger.debug("main.saveSettings(): start.");
         await this.saveData(this.settings);
+        logger.debug('main.saveSettings: Settings have been saved.')
     }
 
     async userInput(): Promise<void> {

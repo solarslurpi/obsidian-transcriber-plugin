@@ -1,8 +1,8 @@
 import TransportStream, { TransportStreamOptions } from 'winston-transport';
 import { Vault, TFile } from 'obsidian';
-import * as path from 'path';
 
 interface CustomTransportOptions extends TransportStreamOptions {
+  //  Identify the options that can be passed to the Obsidian custom transport.
   vault: Vault;
   logFilePath: string;
 }
@@ -12,41 +12,39 @@ class ObsidianTransport extends TransportStream {
   private logFilePath: string;
 
   constructor(opts: CustomTransportOptions) {
+    // Initialize the instance of ObsidianTransport with the vault and logFilePath.
     super(opts);
     this.vault = opts.vault;
     this.logFilePath = opts.logFilePath;
+
+    // Clear and initialize the log file at the start of each run
+    this.initializeLogFile().catch(error => console.error('Error initializing log file:', error));
   }
 
   async initializeLogFile() {
     const yamlHeader = `---\ntags: log_file\nlog_entries:\n---\n`;
     let file = this.vault.getAbstractFileByPath(this.logFilePath) as TFile;
-    if (!file) {
-      // File doesn't exist, create it with the YAML header
-      await this.vault.create(this.logFilePath, yamlHeader);
+    if (file) {
+      // If the file exists, clear its contents
+      await this.vault.modify(file, yamlHeader);
     } else {
-      // File exists, check if it has the correct header
-      const content = await this.vault.read(file);
-      if (!content.startsWith('---\n')) {
-        await this.vault.modify(file, yamlHeader + content);
-      }
+      // If the file does not exist, create it
+      await this.vault.create(this.logFilePath, yamlHeader);
     }
   }
+
   log(info: any, callback: () => void) {
     setImmediate(() => this.emit('logged', info)); // Ensure 'logged' event is emitted
-
-    // Handle Incoming Log Messages
-    const truncatedMessage = info.message.substring(0, 50); // Truncate the message to the first 50 characters
-
     const logEntry = `  - timestamp: "${info.timestamp}"
     level: "${info.level}"
-    message: "${truncatedMessage}"\n`;
+    message: "${info.message}"\n`;
 
     (async () => {
       try {
         let file = this.vault.getAbstractFileByPath(this.logFilePath) as TFile;
         const content = await this.vault.read(file);
 
-        // Delete the Last Line (which contains '---') and add the new Log message. Then put back the ---
+        // Delete the Last Line (which contains '---') and add the new log message, then put back the '---'
         const updatedContent = content.replace(/\n---\n$/, '') + '\n' + logEntry + '---\n';
         await this.vault.modify(file, updatedContent);
       } catch (error) {
@@ -56,7 +54,7 @@ class ObsidianTransport extends TransportStream {
 
     callback();
   }
-
+}
 
 export { ObsidianTransport };
 export type { CustomTransportOptions };
