@@ -6,7 +6,7 @@ The Obsidian Transcriber plugin converts MP3 files and YouTube videos into text 
 
 <!-- Note section, Blue -->
 <div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
-  <strong>Note:</strong> The FastAPI service that handles YouTube downloading and transcribing must be running, and the API endpoint must be correctly set to access the `/api/v1/process_audio` endpoint. By default, the plugin assumes the FastAPI service is running locally. The FastAPI service is maintained in a separate project. For more details on running the service, refer to the [FastAPI service repository](https://github.com/your-fastapi-repo).
+  <strong>Note:</strong> The Obsidian Transcriber plugin requires a connection to an Obsidian Transcriber service. Refer to the section on setting up and using the Obsidian Transcriber service for details.
 </div>
 
 ## ✨ Features
@@ -35,6 +35,47 @@ The demo showed:
 </div>
 
 ## 🛠️ Installation
+
+### Setting up an Obsidian Transcriber Service
+The Obsidian Transcriber Service is available as a Docker container on Docker Hub.
+
+#### Local Install
+
+#### Remote Install on RunPod
+
+There are many hosted (GPU) services to use.  I have used [RunPod](https://www.runpod.io/) in the past with success.  To use RunPod:
+1. Get an account and Login.
+2. Deploy a Pod. I've been using lower end GPU community server for around .20 cents per hour. The better the GPU, CPU, memory resources, the faster and more robust the service will perform.
+  - Choose the Obsidian Transcriber Service Template:
+
+<div style="text-align: center;"> <img src="docs/images/runpod-template-icon.png" alt="api endpoint in settings" width="400"> </div>
+
+3. Once the Pod is deployed, note the https address:
+<!-- Note section, Grey -->
+<div style="padding: 10px; border-left: 3px solid #A5AFAF; background-color: #232727;">
+  <strong>Note:</strong> a Pod's https address is programmatically formed based off the Pod ID and the app's port.  https://{POD_ID}-{INTERNAL_PORT}.proxy.runpod.net
+</div>
+
+
+The Obsidian Transcriber Service uses port 8000.
+
+<div style="text-align: center;"> <img src="docs/images/runpod-id.png" alt="api endpoint in settings" width="700"> </div>
+
+The Runpod id can be found within the Pod's UI.  In the image, the pod id is oby1a31cpjufc9.  The https address to this pod is:
+```html
+https://oby1a31cpjufc9-8000.proxy.runpod.net
+```
+
+
+#### Prerequisites
+1. **Docker**: Ensure Docker is installed on your system. You can download and install it from the [Docker website](https://www.docker.com/products/docker-desktop).
+
+#### Steps to Set Up the Service
+
+1. **Pull the Docker Image**
+   Pull the latest Docker image for the Obsidian Transcriber Service from Docker Hub:
+   ```sh
+   docker pull your_dockerhub_username/obsidian-transcriber-service:latest
 
 ### From Obsidian
 1. Open Obsidian.
