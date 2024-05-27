@@ -37,7 +37,7 @@ export class InputForm extends Modal {
     }
 
     private async handleClick() {
-        this.logger.debug('input_form.handleClick:  invoked.');
+        this.logger.debug('input_form.handleClick:  start.');
 
         // Retrieve and log the URL input value after trimming
         const urlValue = this.urlInput.getValue().trim();

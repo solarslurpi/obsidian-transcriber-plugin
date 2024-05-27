@@ -8,6 +8,7 @@ interface SSEState {
     numChapters: number;
     chapterCounter: number,
     transcriptTime?: string;
+    lastNotice: string;
     isClosed: boolean;
 }
 
@@ -56,8 +57,8 @@ async function handleResponse(apiUrl: string, response: Response, folderPath: st
     if (!response.ok) {
         const errorMessage = `process_audio.handleResponse: Network response was not ok: ${response.statusText}`;
         logger.error(errorMessage);
-        new Notice(errorMessage, 10000);
-        throw new Error('Network response was not ok');
+        new Notice(errorMessage, 5000);
+        throw new Error('Network response was not ok.  Please try again.');
     }
     const feedback = await response.json()
     logger.debug(`process_audio.handleResponse: Post response: ${feedback.message}`);
@@ -75,19 +76,28 @@ function handleSSE(apiUrl: string, folderPath: string): void {
         fullPath: '',
         numChapters: 0,
         chapterCounter: 0,
+        lastNotice: '',
         isClosed: false
     };
+    // Show a Status Notice every setInterval.
+    const noticeIntervalID: ReturnType<typeof setInterval>  = setInterval(() => {
+        if (state.lastNotice) {
+            new Notice(state.lastNotice);
+            state.lastNotice = '';
+        }
+    }, 5000);
 
-    eventSource.onerror = (event: MessageEvent) => {
+    eventSource.onerror = () => {
         logger.error(`process_audio.handleSSE: EventSource encountered an error.`);
         closeEventSource(eventSource, state);
         new Notice('Error occurred. Stopping SSE.', 10000);
     };
 
-    eventSource.onmessage = (event) => handleSSEMessage(event, eventSource, state, folderPath);
+    eventSource.onmessage = (event) => handleSSEMessage(event, eventSource, state, folderPath, noticeIntervalID);
+
 }
 
-function handleSSEMessage(event: MessageEvent, eventSource: EventSource, state: SSEState, folderPath: string): void {
+function handleSSEMessage(event: MessageEvent, eventSource: EventSource, state: SSEState, folderPath: string, noticeIntervalID:ReturnType<typeof setInterval> ): void {
     if (state.isClosed) {
         logger.debug(`process_audio.handleSSEMessage: Received message after SSE is closed: ${event.data}`);
         return;
@@ -97,14 +107,17 @@ function handleSSEMessage(event: MessageEvent, eventSource: EventSource, state: 
 
     if (data.status) {
         logger.debug(`process_audio.handleSSEMessage: Status: ${data.status}`);
-        new Notice(data.status);
+        // new Notice(data.status);
+        state.lastNotice = data.status;
     }
 
     if (data.done) {
         logger.debug('process_audio.handleSSEMessage: Transcription process finished.');
-        saveTranscript(state, folderPath);
+        saveTranscript(state);
         closeEventSource(eventSource, state);
-        new Notice('Transcription process finished.');
+        // new Notice('Transcription process finished.');
+        state.lastNotice = 'Transcription process finished.'
+        clearInterval(noticeIntervalID)
 
     }
     updateState(data, state, folderPath);
@@ -127,32 +140,35 @@ function resetSSEState(state: SSEState, isClosed: boolean): void {
     state.isClosed = isClosed;
 }
 function updateState(data: any, state: SSEState, folderPath: string): void {
-    logger.debug(`data: ${data}`)
     if (data.basefilename) {
         state.fullPath = `${folderPath}/${data.basefilename}.md`;
         logger.debug(`process_audio.updateState: Transcript path set: ${state.fullPath}`);
-        new Notice(`Transcript path set: ${state.fullPath}`);
+        // new Notice(`Transcript path set: ${state.fullPath}`);
+        state.lastNotice = `Transcript path set: ${state.fullPath}`;  // Store the message
     }
     if (data.frontmatter) {
         state.frontmatter = data.frontmatter;
         logger.debug(`process_audio.updateState: Frontmatter set.`);
-        new Notice(`Finished Frontmatter`);
+        // new Notice(`Finished Frontmatter`);
+        state.lastNotice = 'Finished Frontmatter';  // Store the message
     }
     if (data.num_chapters) {
         state.numChapters = data.num_chapters;
         logger.debug(`process_audio.updateState: Number of chapters: ${data.num_chapters}`);
-        new Notice(`Processing Chapters. Total number: ${data.num_chapters}`)
+        // new Notice(`Processing Chapters. Total number: ${data.num_chapters}`);
+        state.lastNotice = `Processing Chapters. Total number: ${data.num_chapters}`;  // Store the message
     }
     if (data.chapter) {
         state.chapterCounter += 1;
         state.chapters.push(data.chapter);
-        // const chapter = data.chapter.substring(0, 10).replace(/\n/g, '');
         logger.debug(`process_audio.updateState: Chapter ${state.chapterCounter} added to transcript.`);
-        new Notice(`Chapter ${state.chapterCounter} added to transcript.`);
+        // new Notice(`Chapter ${state.chapterCounter} added to transcript.`);
+        state.lastNotice = `Chapter ${state.chapterCounter} added to transcript.`;  // Store the message
     }
 }
 
-function saveTranscript(state: SSEState, folderPath: string): void {
+
+function saveTranscript(state: SSEState): void {
     if (!state.fullPath) {
         const errorMessage = 'A transcript file path was not provided by the server. Please report this issue to the plugin author.';
         logger.error(`process_audio.saveTranscript: ${errorMessage}`);
@@ -161,7 +177,6 @@ function saveTranscript(state: SSEState, folderPath: string): void {
     }
 
     logger.debug(`process_audio.saveTranscript: Saving transcript to ${state.fullPath}`);
-    new Notice(`Saving transcript to ${state.fullPath}`)
     try {
         let file = this.app.vault.getAbstractFileByPath(state.fullPath) as TFile;
         let content = '';

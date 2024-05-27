@@ -18,42 +18,37 @@ class ObsidianTransport extends TransportStream {
   }
 
   async initializeLogFile() {
-    const yamlHeader = `---
-tags: log_file
-log_entries:
-`;
-
+    const yamlHeader = `---\ntags: log_file\nlog_entries:\n---\n`;
     let file = this.vault.getAbstractFileByPath(this.logFilePath) as TFile;
     if (!file) {
-      await this.vault.create(this.logFilePath, yamlHeader + '---\n');
+      // File doesn't exist, create it with the YAML header
+      await this.vault.create(this.logFilePath, yamlHeader);
     } else {
+      // File exists, check if it has the correct header
       const content = await this.vault.read(file);
-      if (!content.startsWith('---')) {
+      if (!content.startsWith('---\n')) {
         await this.vault.modify(file, yamlHeader + content);
       }
     }
   }
-
   log(info: any, callback: () => void) {
     setImmediate(() => this.emit('logged', info)); // Ensure 'logged' event is emitted
+
+    // Handle Incoming Log Messages
+    const truncatedMessage = info.message.substring(0, 50); // Truncate the message to the first 50 characters
+
     const logEntry = `  - timestamp: "${info.timestamp}"
     level: "${info.level}"
-    message: "${info.message}"\n`;
+    message: "${truncatedMessage}"\n`;
 
     (async () => {
       try {
         let file = this.vault.getAbstractFileByPath(this.logFilePath) as TFile;
-        if (!file) {
-          const yamlHeader = `---
-tags: log_file
-log_entries:
-`;
-          await this.vault.create(this.logFilePath, yamlHeader + logEntry + '---\n');
-        } else {
-          const content = await this.vault.read(file);
-          const newContent = content.replace(/\n---\n$/, '') + '\n' + logEntry + '---\n';
-          await this.vault.modify(file, newContent);
-        }
+        const content = await this.vault.read(file);
+
+        // Delete the Last Line (which contains '---') and add the new Log message. Then put back the ---
+        const updatedContent = content.replace(/\n---\n$/, '') + '\n' + logEntry + '---\n';
+        await this.vault.modify(file, updatedContent);
       } catch (error) {
         console.error('Error writing log entry to Obsidian vault:', error);
       }
@@ -61,7 +56,7 @@ log_entries:
 
     callback();
   }
-}
+
 
 export { ObsidianTransport };
 export type { CustomTransportOptions };
