@@ -26,9 +26,9 @@ export class SettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // API Endpoint URL Setting
+        // Obsidian Transcriber Service Endpoint URL Setting
         new Setting(containerEl)
-            .setName('API Endpoint URL')
+            .setName('Obsidian Transcriber Service Endpoint URL')
             .setDesc('Specify the URL endpoint for transcription services.')
             .addText(text => text
                 .setValue(this.plugin.settings.transcriberApiUrl)
