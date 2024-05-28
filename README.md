@@ -43,7 +43,7 @@ Check the upper right for progress updates.
 The example has metadata and 5 chapters.
 
 YouTube metadata and chapters offer deeper context than just audio transcription.
-The demo showed:
+
 - The key/values of the frontmatter are derived from YouTube metadata and `whisper` tuning parameters. These properties benefit search (e.g., tags) and provide context about the video (e.g., description, tags).
 - If a transcript originates from a YouTube video with chapters, the transcript will be segmented accordingly. Each chapter will include its title, start and stop times, and the corresponding text.
 
@@ -52,19 +52,13 @@ The demo showed:
   <strong>Note:</strong> Some, but unfortunately not all YouTube videos, are segmented into chapters.  Along with the start and end time, each chapter comes with a title.  There are two ways a video can have chapters.  The author can manually create chapters by adding timestamps and titles.  YouTube can also generate chapters algorithmically using techniques like Natural Language Processing (NLP), visual and audio cues, and user interaction data..
 </div>
 
-<!-- Note section, Grey -->
-<div style="padding: 10px; border-left: 3px solid #A5AFAF; background-color: #232727;">
-  <strong>Note:</strong>  If the icon is not visible, ensure that the plugin is properly installed and enabled. Then, check the visible icons in the ribbon by right-clicking on an empty space in the ribbon to see which icons are displayed and adjust as needed.
-</div>
-
-<div style="text-align: center;"> <img src="docs/images/input_ui.png" alt="api endpoint in settings" width="500"> </div>
-
-Once in the UI:
-- Choose an audio file or enter a YouTube URL to transcribe.
-- Tap or click on the `Submit` button.
-
 ## ⚙️ Configuration
-You can configure the plugin settings by navigating to `Settings` > `Plugin Options` > `Obsidian Transcriber`. Available settings include:
+You can configure the plugin settings by navigating to `Settings` > `Plugin Options` > `Obsidian Transcriber`.
+
+<div style="text-align: center;"> <img src="docs/images/setings_ui.png" alt="api endpoint in settings" width="600"> </div>
+
+Available settings include:
+- **Transcripts Folder**: The name of the folder where the transcribed notes will be written.  The default folder is `transcripts`.  The folder will be created if it does not exist.
 - **Obsidian Transcriber Service URL**: Specify the URL endpoint for the transcription service.  The default setting is `http://127.0.0.1:8000/api/v1/process_audio`.  Change the URL component to be the URL to the IP address and port that is running the FastAPI service.
 - **Audio Quality**: Select the desired audio quality (tiny, small, medium, large).
 - **Log Level**: Set the log level for the plugin (error, warn, info, http, verbose, debug, silly).
@@ -74,7 +68,7 @@ You can configure the plugin settings by navigating to `Settings` > `Plugin Opti
 ### Installing the Obsidan Transcriber Plugin
 
 #### From Obsidian
-(Currently not available)
+(in experimentation.  Installing as a Community pluggin is not available).
 1. Open Obsidian.
 2. Go to `Settings` > `Community plugins` > `Browse`.
 3. Search for "Obsidian Transcriber".
@@ -158,3 +152,7 @@ The default endpoint, `http://127.0.0.1:8000/api/v1/process_audio`, assumes you 
 If you are running locally, make sure your endpoint url is the same as `http://127.0.0.1:8000/api/v1/process_audio`.
 
 Go to your web browser and try the health check endpoint: `http://127.0.0.1:8000/api/v1/health`.  If the page lets you know the site can't be reached, the next step is to figure out why the fastapi transcriber service is not running locally.
+
+
+
+ flower not visible in left ribbon: If the icon is not visible, ensure that the plugin is properly installed and enabled. Then, check the visible icons in the ribbon by right-clicking on an empty space in the ribbon to see which icons are displayed and adjust as needed.
