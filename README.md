@@ -19,12 +19,30 @@ The Obsidian Transcriber plugin converts MP3 files and YouTube videos into text 
   - **🎧 Audio Quality**: Choose audio quality from `tiny` to `large` using Whisper. Higher quality increases processing time. Default: `medium`.
   - **🐞 Log Level**: Set logging level for debugging. Default: `debug`.
 
-## 🎥 Demo
+
+
+## 📺 Example: YouTube Video with Chapters
+
+Example YouTube video: https://www.youtube.com/watch?v=KbZDsrs5roI
+
+<div style="text-align: center;"> <img src="docs/images/bluelab_youtube.png" alt="screenshot of youtube video with chapters" width="700"> </div>
+
+### 🎥 Demo
 
 <div style="text-align: center;">
-  <img src="https://github.com/solarslurpi/obsidian-transcriber-plugin/raw/main/docs/docs/obsidian-transcriber.gif" alt="Obsidian Transcriber" style="width: 700px;">
+  <img src="https://github.com/solarslurpi/obsidian-transcriber-plugin/raw/main/docs/images/obsidian-transcriber-plugin.gif" alt="Obsidian Transcriber" style="width: 700px;">
 </div>
 
+Click on the ❀ flower in the left ribbon to bring up the UI
+	- OR `<ctrl-p>` (PC) `<cmd-p>` (Mac)
+
+Check the upper right for progress updates.
+
+
+
+The example has metadata and 5 chapters.
+
+YouTube metadata and chapters offer deeper context than just audio transcription.
 The demo showed:
 - The key/values of the frontmatter are derived from YouTube metadata and `whisper` tuning parameters. These properties benefit search (e.g., tags) and provide context about the video (e.g., description, tags).
 - If a transcript originates from a YouTube video with chapters, the transcript will be segmented accordingly. Each chapter will include its title, start and stop times, and the corresponding text.
