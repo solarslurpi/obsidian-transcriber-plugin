@@ -52,9 +52,6 @@ The demo showed:
   <strong>Note:</strong> Some, but unfortunately not all YouTube videos, are segmented into chapters.  Along with the start and end time, each chapter comes with a title.  There are two ways a video can have chapters.  The author can manually create chapters by adding timestamps and titles.  YouTube can also generate chapters algorithmically using techniques like Natural Language Processing (NLP), visual and audio cues, and user interaction data..
 </div>
 
-## 💡 How It Works
-To use the plugin, you have two options to get to the plugin's UI. First, you can access the plugin commands by opening the command palette with `Ctrl+P` or `Cmd+P` and typing `transcriber`. Second, you can use the plugin's flower icon in the ribbon on the left side of the Obsidian interface.
-
 <!-- Note section, Grey -->
 <div style="padding: 10px; border-left: 3px solid #A5AFAF; background-color: #232727;">
   <strong>Note:</strong>  If the icon is not visible, ensure that the plugin is properly installed and enabled. Then, check the visible icons in the ribbon by right-clicking on an empty space in the ribbon to see which icons are displayed and adjust as needed.
