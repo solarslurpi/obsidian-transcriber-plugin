@@ -24,6 +24,7 @@
 	},
 	"dependencies": {
 		"mime-types": "^2.1.35",
+		"reconnecting-eventsource": "^1.6.2",
 		"winston": "^3.13.0",
 		"winston-daily-rotate-file": "^5.0.0"
 	}

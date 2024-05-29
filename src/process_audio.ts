@@ -1,5 +1,9 @@
+import ReconnectingEventSource from 'reconnecting-eventsource';
+
+
 import { Notice, TFile } from 'obsidian';
 import { logger } from './logger';
+
 
 interface SSEState {
     chapters: string[];
@@ -67,8 +71,8 @@ async function handleResponse(apiUrl: string, response: Response, folderPath: st
 
 function handleSSE(apiUrl: string, folderPath: string): void {
     const sseUrl = apiUrl.replace("/process_audio", "/stream");
-    const eventSource = new EventSource(sseUrl);
-    logger.debug(`process_audio.handleSSE: EventSource created at ${sseUrl}`);
+    const eventSource = new ReconnectingEventSource(sseUrl);
+    logger.debug(`process_audio.handleSSE: ReconnectingEventSource created at ${sseUrl}`);
 
     const state: SSEState = {
         chapters: [],
@@ -79,23 +83,23 @@ function handleSSE(apiUrl: string, folderPath: string): void {
         lastNotice: '',
         isClosed: false
     };
+
     // Show a Status Notice every setInterval.
-    const noticeIntervalID: ReturnType<typeof setInterval>  = setInterval(() => {
+    const noticeIntervalID: ReturnType<typeof setInterval> = setInterval(() => {
         if (state.lastNotice) {
             new Notice(state.lastNotice);
             state.lastNotice = '';
         }
     }, 5000);
 
-    eventSource.onerror = () => {
-        logger.error(`process_audio.handleSSE: EventSource encountered an error.`);
-        closeEventSource(eventSource, state);
-        new Notice('Error occurred. Stopping SSE.', 10000);
-    };
+    eventSource.addEventListener('error', () => {
+        logger.error(`process_audio.handleSSE: ReconnectingEventSource encountered an error and is trying to fix it.`);
+        new Notice('Error occurred. ReconnectingEventSource is trying to fix it.', 10000);
+    });
 
-    eventSource.onmessage = (event) => handleSSEMessage(event, eventSource, state, folderPath, noticeIntervalID);
-
+    eventSource.addEventListener('message', (event) => handleSSEMessage(event, eventSource, state, folderPath, noticeIntervalID));
 }
+
 
 function handleSSEMessage(event: MessageEvent, eventSource: EventSource, state: SSEState, folderPath: string, noticeIntervalID:ReturnType<typeof setInterval> ): void {
     if (state.isClosed) {

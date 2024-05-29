@@ -38,8 +38,6 @@ Click on the ❀ flower in the left ribbon to bring up the UI
 
 Check the upper right for progress updates.
 
-
-
 The example has metadata and 5 chapters.
 
 YouTube metadata and chapters offer deeper context than just audio transcription.
@@ -76,16 +74,18 @@ Available settings include:
 5. Once installed, enable the plugin in the `Community plugins` section.
 
 ### Manual Installation
-1. Download the latest release from the [GitHub releases page](https://github.com/your-repo/obsidian-transcriber/releases).
-2. Unzip the download.
-3. Copy the `obsidian-transcriber` folder to your vault's plugins folder: `<vault>/.obsidian/plugins/`.
-4. Enable the plugin in the Obsidian settings under `Community plugins`.
-
+1. Go to your Obsidian vault's plugin folder (`<vault name>/.obsidian/plugins`).
+2. Create the folder `obsidian-transcriber-plugin`.
+3. Go to [Releases](https://github.com/solarslurpi/obsidian-transcriber-plugin/releases).
+4. Download the Source code under Assets (either the zip or tar file).
+5. Open the zip file and copy main.js and manifest.json to the `obsidian-transcriber-plugin` folder.
+6. Open your Obsidian vault and go into Settings.  Choose core plugins and enable the `Obsidian Transcriber Plugin`.
 
 ### Setting up an Obsidian Transcriber Service
 The Obsidian Transcriber Service is available as a Docker container on Docker Hub.
 
 #### Local Install
+Tp
 
 #### Remote Install on RunPod
 
@@ -121,19 +121,8 @@ https://oby1a31cpjufc9-8000.proxy.runpod.net/api/v1/process_audio
 <div style="padding: 10px; border-left: 3px solid #A5AFAF; background-color: #232727;">
   <strong>Note:</strong> Pay careful attention to get the endpoint correct.  It is necessary in order for the transcription to work.  If you feel it should work, try doing a transcription.  You will receive a notice if the Obsidian Transcriber Service can't be reached.
 </div>
-#### Prerequisites
-1. **Docker**: Ensure Docker is installed on your system. You can download and install it from the [Docker website](https://www.docker.com/products/docker-desktop).
 
-#### Steps to Set Up the Service
-
-1. **Pull the Docker Image**
-   Pull the latest Docker image for the Obsidian Transcriber Service from Docker Hub:
-   ```sh
-   docker pull your_dockerhub_username/obsidian-transcriber-service:latest
-
-
-
-
+Now try to transcribe either a local mp3 file or a YouTube video.
 ## 🐞 Troubleshooting
 
 ### Fail to Connect to Transcriber Service
