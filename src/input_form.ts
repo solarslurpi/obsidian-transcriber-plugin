@@ -94,6 +94,7 @@ export class InputForm extends Modal {
     private async processInput(input: File | string, type: 'file' | 'url') {
         let apiUrl = this.plugin.settings.transcriberApiUrl;
         let folderPath = this.plugin.settings.transcriptsFolder;
+        let audioQuality = this.plugin.settings.audioQuality;
         let description = type === 'file' ? `audio file - ${(input as File).name}` : `YouTube URL - ${input}`;
 
         this.logger.debug(`input_form.processInput: Processing ${description}.`);
@@ -105,14 +106,14 @@ export class InputForm extends Modal {
                     input as File,
                     apiUrl,
                     folderPath,
-                    this.plugin.settings.audioQuality
+                    audioQuality
                 );
             } else {
                 response = await processAudio(
                     input as string,
                     apiUrl,
                     folderPath,
-                    this.plugin.settings.audioQuality
+                    audioQuality
                 );
             }
 
