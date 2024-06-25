@@ -1,43 +1,44 @@
-import yaml from 'js-yaml';
+import {  Notice, TFile } from 'obsidian';
+import TranscriberPlugin from './main';
+import { logger } from './logger';
+import { createFrontmatter } from './utils';
+
 import ReconnectingEventSource from 'reconnecting-eventsource';
 
 
-import { Notice, TFile } from 'obsidian';
-import { logger } from './logger';
-
-
-interface SSEState {
-    chapters: string[];
-    frontmatter: string;
-    noteName: string;
-    numChapters: number;
-    transcriptTime?: string;
-    lastNotice?: string;
-
+interface Chapter {
+    title: string;
+    start_time: number;
+    end_time: number;
+    transcript: string;
+    number: number;
 }
 
+interface ContentState {
+    basename: string;
+    frontmatter: string;
+    numChapters: number;
+    chapters: Chapter[];
+}
+let lastNotice: string = '';
 
-let eventSource: EventSource ;
-let noticeIntervalID: ReturnType<typeof setInterval> ;
+let eventSource: EventSource;
+let noticeIntervalID: ReturnType<typeof setInterval>;
 
-// Overloads for the function allow processing either an UploadFile or a Youtube Url.
-export async function processAudio(file: File, apiUrl: string, folderPath: string, audioQuality: string): Promise<void>;
-export async function processAudio(url: string, apiUrl: string, folderPath: string, audioQuality: string): Promise<void>;
+// export function processAudio(plugin: TranscriberPlugin,  file: File): Promise<void>;
+// export function processAudio(plugin: TranscriberPlugin, url: string): Promise<void>;
 
-// Implementation
-export async function processAudio(input: File | string, apiUrl: string, folderPath: string, audioQuality: string): Promise<void> {
+export async function processAudio(plugin: TranscriberPlugin, input: File | string): Promise<void> {
     new Notice('Starting to process audio.');
     try {
-        const formData = createFormData(input, audioQuality);
-        // Initialize the SSE connection before sending the POST to capture all SSE events.
-        // initSSE sets it up so that SSE events are handled by handleSSE_event.
-        handleSSE(apiUrl, folderPath);
-        const response = await sendTranscriptionRequest(apiUrl, formData);
-        // Check out what the response said.
+        handleSSE(plugin);
+        const formData = createFormData(input, plugin.settings.audioQuality);
+
+        const response = await sendTranscriptionRequest(plugin.settings.transcriberApiUrl, formData);
         await handleResponse(response);
     } catch (error) {
         logger.error(`process_audio.processAudio: Error during transcription request: ${error}`);
-        new Notice(`Error during transcription request: ${error}`, 10000);
+        new Notice(`Could not connect to the transcriber service.  Is it running?`);
     }
 }
 
@@ -70,158 +71,214 @@ async function handleResponse(response: Response): Promise<void> {
         const errorMessage = `process_audio.handleResponse: Network response was not ok: ${response.statusText}`;
         logger.error(errorMessage);
         new Notice(errorMessage, 5000);
-        throw new Error('Network response was not ok.  Please try again.');
+        throw new Error('Network response was not ok. Please try again.');
     }
 
     const feedback = await response.json()
-    logger.debug(`process_audio.handleResponse: Post response: ${feedback.status}`);
+    logger.debug(`process_audio.handleResponse: Post response message: ${feedback.status}`);
 }
 
-function handleSSE(apiUrl: string, transcriptsFolder: string): void {
-    const state: SSEState = {
-        chapters: [],
+function handleSSE(plugin:TranscriberPlugin): void {
+
+    const state: ContentState = {
+        basename: '',
         frontmatter: '',
-        noteName: '',
         numChapters: 0,
-        transcriptTime: '',
-        lastNotice: '',
+        chapters: [],
     };
-    const sseUrl = apiUrl.replace("/process_audio", "/sse");
+
+    const sseUrl = plugin.settings.transcriberApiUrl.replace("/process_audio", "/sse");
     eventSource = new ReconnectingEventSource(sseUrl);
     logger.debug(`process_audio.handleSSE: ReconnectingEventSource created at ${sseUrl}`);
     noticeIntervalID = setInterval(() => {
-        if (state.lastNotice) {
-            new Notice(state.lastNotice);
-            state.lastNotice = '';
+        if (lastNotice) {
+            new Notice(lastNotice);
+            lastNotice = '';
         }
     }, 5000);
 
-        // Listen for "status" events
     eventSource.addEventListener("status", (event) => {
-        // The incoming status message sets the lastNotice in the state so that when the interval between status messages fires, the last status message is shown.
-        state.lastNotice = event.data;
-        logger.debug(`process_audio.handleSSEMessage: Received a status message: ${event.data}`);
+        lastNotice = event.data;
+        logger.debug(`**status message**: ${event.data}`);
     });
 
+    eventSource.addEventListener("server-error", (event) => {
+        logger.debug(`**error message**: ${event.data}`);
+    });
     eventSource.addEventListener("data", (event) => {
-        handleContentEvent(event, state, transcriptsFolder);
+        handleContentEvent(plugin, event, state);
     });
 
-    // Handle open connection
     eventSource.onopen = (event) => {
-        console.log("SSE connection opened.");
+        logger.debug("SSE connection opened.");
     };
-
-
 }
 
-function handleContentEvent(event: MessageEvent, state: SSEState, transcriptsFolder: string ): void {
-    try{
-        logger.debug(`process_audio.handleSSEMessage: Received a data message. ${event.data}`);
+function handleContentEvent(plugin:TranscriberPlugin, event: MessageEvent, state: ContentState): void {
+    type StateKeys = keyof ContentState;
+    try {
+        // logger.debug(`process_audio.handleContentEvent: Received a data message. ${event.data}`);
         const data = JSON.parse(event.data);
-        console.log(event.data);
-        if (data.metadata) {
-            console.log(`data.metadata: ${data.metadata}`);
-            // pull out the title and make that the name of the Obsidian note.
-            try {
-                if (data.metadata.title) {
-                    state.noteName = data.metadata.title;
-                    logger.debug(`process_audio.handleSSEMessage: Note name is set to ${state.noteName}`);
-                    new Notice(`Processing ${state.noteName}`);
-                }
-                // wrapp the metadata and save it as the frontmatter.
+        logger.debug(`!!! A Content event: ${event.data}!!!`)
 
-                let frontmatterYaml = '---\n';
-                for (const [key, value] of Object.entries(data.metadata)) {
-                    if (key === "chapters_metadata") continue; // Skip chapters_metadata
-                    frontmatterYaml += `${key}: ${value !== null ? value : '""'}\n`;
-                    }
-                frontmatterYaml += '---';
-                logger.debug(`process_audio.handleSSEMessage: Frontmatter: ${frontmatterYaml}`);
-                state.frontmatter = `---\n${frontmatterYaml}---\n`;
+        if (data.basename) {
+            logger.debug(`**data:basename**: ${data.basename}`);
+            state.basename = data.basename;
+            new Notice("processed basename");
+        }
+        if (data.metadata) {
+            try {
+                state.frontmatter = createFrontmatter(data.metadata);
+                logger.debug(`**data:frontmatter**: ${state.frontmatter}`)
+                // logger.debug(`process_audio.handleContentEvent: \nFrontmatter created: \n${state.frontmatter}\n`);
                 new Notice("processed metadata");
-            } catch(error) {
-                logger.error(`process_audio.handleSSEMessage: Error processing metadata: ${error.message}`)
-                new Notice(`Error processing metadata: ${error.message}`, 10000);
+            } catch (error) {
+                logger.error(`process_audio.handleContentEvent: Error processing metadata: ${error.message}`)
+                new Notice(`Error processing metadata: ${error.message}`);
             }
         }
         if (data.num_chapters) {
-            console.log(`num chapters: ${data.num_chapters}`);
-            try{
+            logger.debug(`**data:num_chapters**: ${data.num_chapters}`);
+            try {
                 state.numChapters = data.num_chapters;
-                logger.debug(`process_audio.handleSSEMessage: Number of chapters: ${data.num_chapters}`);
+                // logger.debug(`process_audio.handleContentEvent: Number of chapters: ${data.num_chapters}`);
                 new Notice(`Processing ${state.numChapters} chapters`);
-            } catch(error) {
-                logger.error(`process_audio.handleSSEMessage: Error processing number of chapters: ${error.message}`)
-                new Notice(`Error processing number of chapters: ${error.message}`, 10000);
+            } catch (error) {
+                logger.error(`process_audio.handleContentEvent: Error processing number of chapters: ${error.message}`)
+                new Notice(`Error processing number of chapters: ${error.message}`);
             }
         }
 
         if (data.chapter) {
-            try{
-                state.chapters.push(data.chapter);
-                logger.debug(`process_audio.handleSSEMessage: Added chapter to chapters list. The title is: ${data.chapter.chapter_metadata.title}. The start tiem is: ${data.chapter.chapter_metadata.start_time}. The end time is: ${data.chapter.chapter_metadata.end_time}`);
+            try {
+                addChapter(state, data);
+                logger.debug(`**data:chapter**: ${state.chapters}`);
 
-            } catch(error) {
-                logger.error(`process_audio.handleSSEMessage: Error padding chapter to chapters list: ${error.message}`)
-                new Notice(`Error processing number of chapters: ${error.message}`, 10000);
+            } catch (error) {
+                logger.error(`process_audio.handleContentEvent: Error adding chapter to chapters list: ${error.message}`)
+                new Notice(`Error processing number of chapters: ${error.message}`);
             }
         }
-
-        if (data.transcription_time) {
-            // This is the last message in the transcription sequence. Time to save the transcript.
-            logger.debug('process_audio.handleSSEMessage: Transcription process finished.');
-            saveTranscript(state, transcriptsFolder);
+         // Ensure all other fields are received before closing the event source
+        const missing = missingStateList(state);
+        // logger.debug(`--> missing properties: ${missing.join(', ')}`)
+        if (missing.length ===0) {
+            logger.debug('-->state is complete');
+            saveTranscript(plugin, state);
             closeEventSource(eventSource, state);
-            clearInterval(noticeIntervalID)
+            clearInterval(noticeIntervalID);
+        } else {
+            // Get received properties
+            const receivedProperties = Object.keys(state).filter(key => receivedContent(key as StateKeys, state[key as StateKeys]));
+            logger.debug(`--> KNOWN PROPERTIES: ${receivedProperties.join(', ')}`);
+            logger.debug(`--> MISSING PROPERTIES: ${missing.join(', ')}`);
         }
-    }catch (error) {
+    } catch (error) {
         logger.error(`process_audio.handleSSEMessage: Error processing metadata: ${error.message}`);
         new Notice(`Error processing metadata: ${error.message}`);
-
     }
 }
 
-function closeEventSource(eventSource: EventSource, state: SSEState): void {
+function closeEventSource(eventSource: EventSource, state: ContentState): void {
     eventSource.close();
-    resetSSEState(state, true);
+    resetContentState(state);
     logger.debug('process_audio.closeEventSource: EventSource closed.');
-
 }
 
-function resetSSEState(state: SSEState, isClosed: boolean): void {
-    state.chapters = [];
+function resetContentState(state: ContentState): void {
+    state.basename = '';
     state.frontmatter = '';
-    state.noteName = '';
     state.numChapters = 0;
-    state.transcriptTime = '';
-    state.lastNotice = '';
+    state.chapters = [];
+}
+function addChapter(state: ContentState, data: any) {
+    logger.debug("addChapter incoming data:", data);
+    // Check if the chapter number already exists in the state
+    const chapterExists = state.chapters.some(chapter => chapter.number === data.number);
+    if (!chapterExists) {
+        try {
+            const chapter: Chapter = {
+                title: data.chapter.title,
+                start_time: data.chapter.start_time,
+                end_time: data.chapter.end_time,
+                transcript: data.chapter.transcript,
+                number: data.number
+            };
+            state.chapters.push(chapter);
+        } catch (error) {
+            console.error("Error adding chapter:", error);
+        }
+    } else {
+        console.log(`Chapter number ${data.number} already exists. Skipping.`);
+    }
 }
 
-function saveTranscript(state: SSEState, transcriptsFolder: string): void {
-    // make the note name the title of the note.  The folder is this.settings.transcriptsFolder. call this variable fullpath.
-    // open the note for writing.
-    // write the frontmatter.
-    // for each chapter, write the title, new line start and stop time,
+
+function missingStateList(state: ContentState): string[] {
+    const missingProperties: string[] = [];
+    if (state.basename === '') {
+        missingProperties.push("basename");
+    }
+    if (state.numChapters === 0) state.numChapters = 1;
+    if (state.chapters.length < state.numChapters) {
+        missingProperties.push("chapters");
+    }
+    if (state.frontmatter === '') {
+        missingProperties.push("frontmatter");
+    }
+    if (state.numChapters <= 0) {
+        missingProperties.push("numChapters");
+    }
+
+    return missingProperties;
+}
+
+// Updated function to check if content is considered "received", including chapters check
+function receivedContent(key: keyof ContentState, value: any, state?: ContentState): boolean {
+    if (key === 'chapters' && (state?.numChapters ?? 0) > 0) {
+        return state?.numChapters === value.length;
+    }
+    else if (Array.isArray(value) && value.length > 0) {
+        return true;
+    } else if (typeof value === 'string' && value.trim() !== '') {
+        return true;
+    } else if (typeof value === 'number' && value !== 0) {
+        return true;
+    }
+    return false;
+}
+
+function saveTranscript(plugin:TranscriberPlugin, state: ContentState): void {
     try {
-        const noteLocation = `${transcriptsFolder}/${state.noteName}`;
-        const file = this.app.vault.getAbstractFileByPath(noteLocation) as TFile;
+        const noteLocation = `${plugin.settings.transcriptsFolder}/${state.basename}.md`;
+        const file = plugin.app.vault.getAbstractFileByPath(noteLocation) as TFile;
+        logger.debug(`process_audio.saveTranscript: Saving transcript to ${noteLocation}`)
+        // Put the content together based on what was collected in the state during transcription process.
+        // We have verified the existence of the state properties. so it is a matter of putting them together.
         let content = '';
-        if (state.frontmatter) {
-            content += `${state.frontmatter}\n\n`;
+        // start with the frontmatter.
+        content += `${state.frontmatter}\n\n`;
+        // Add the chapters
+        // Most likely the chapters came in order, but just in case, sort them by number.
+        state.chapters.sort((a, b) => a.number - b.number);
+        // Construct content with each chapter
+        state.chapters.forEach(chapter => {
+            if (chapter.title !== '') {
+                content += `# ${chapter.title}\n`;
+            }
+        if (chapter.end_time !== 0) {
+            const startTimeFormatted = secondsToYouTubeTimeFormat(chapter.start_time);
+            content += `${startTimeFormatted}\n`;
         }
-
-        if (state.chapters) {
-            content += state.chapters.join('\n');
-            content += '\n';
-        } else {
-            content += "No content available.";
-        }
-
+            content += `${chapter.transcript}\n\n`; // Add two new lines for separation
+        });
+        logger.debug(`process_audio.saveTranscript: Saving transcript to ${noteLocation}`)
         if (file) {
-            this.app.vault.modify(file, content);
+            logger.debug(`process_audio.saveTranscript: Modifying existing file: ${file}`);
+            plugin.app.vault.modify(file, content);
         } else {
-            this.app.vault.create(noteLocation, content);
+            logger.debug(`process_audio.saveTranscript: Creating new file: ${noteLocation}`);
+            plugin.app.vault.create(noteLocation, content);
         }
         new Notice(`Transcript saved to ${noteLocation}`);
         logger.debug(`process_audio.saveTranscript: Transcript saved to ${noteLocation}`);
@@ -230,4 +287,17 @@ function saveTranscript(state: SSEState, transcriptsFolder: string): void {
         logger.error(`process_audio.saveTranscript: Error saving transcript: ${error.message}`);
         new Notice(`Error saving transcript: ${error.message}`, 10000);
     }
+}
+
+// Convert seconds to YouTube time format (e.g., 0:00)
+function secondsToYouTubeTimeFormat(seconds: number): string {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    let timeString = `${minutes}:${secs.toString().padStart(2, '0')}`;
+    if (hours > 0) {
+        timeString = `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return timeString;
 }

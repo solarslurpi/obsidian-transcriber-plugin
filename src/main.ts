@@ -11,7 +11,7 @@ export default class TranscriberPlugin extends Plugin {
     async onload() {
         // Load Settings
         await this.loadSettings();
-        console.log('obsidian-transcriber: Settings loaded successfully. ')
+        logger.debug('obsidian-transcriber: Settings loaded successfully. ')
 
         // Initialize logging to the console as well as an obsidian note.
         const logDir = this.settings.logDir;  // Use the log directory from settings

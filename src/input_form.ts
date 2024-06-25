@@ -92,46 +92,22 @@ export class InputForm extends Modal {
     }
 
     private async processInput(input: File | string, type: 'file' | 'url') {
-        let apiUrl = this.plugin.settings.transcriberApiUrl;
-        let folderPath = this.plugin.settings.transcriptsFolder;
-        let audioQuality = this.plugin.settings.audioQuality;
         let description = type === 'file' ? `audio file - ${(input as File).name}` : `YouTube URL - ${input}`;
-
         this.logger.debug(`input_form.processInput: Processing ${description}.`);
 
         try {
-            let response;
             if (type === 'file') {
-                response = await processAudio(
-                    input as File,
-                    apiUrl,
-                    folderPath,
-                    audioQuality
-                );
+                await processAudio(this.plugin, input as File);
             } else {
-                response = await processAudio(
-                    input as string,
-                    apiUrl,
-                    folderPath,
-                    audioQuality
-                );
+                await processAudio(this.plugin, input as string);
             }
-
         } catch (error) {
             new Notice(`Error: Attempting to process ${description}. ${error}`, 0);
             this.logger.error(`input_form.processInput: Error attempting to process ${description}. Error: ${error}`);
         }
     }
 
-    async checkServiceAvailability(): Promise<boolean> {
-        this.logger.debug(`input_form.checkServiceAvailability:start`);
-        try {
-            const response = await fetch(this.healthCheckUrl);
-            return response.ok;
-        } catch (error) {
-            return false;
-        }
-    }
+
 
     private render() {
         this.contentEl.classList.add('transcriber-container');
@@ -157,14 +133,6 @@ export class InputForm extends Modal {
         const submitButton = new ButtonComponent(buttonContainer)
             .setButtonText('Submit')
             .onClick(async () => {
-
-                // Ensure service availability before setting up SSE channel.
-                if (!(await this.checkServiceAvailability())) {
-                    this.logger.error('input_form.render:The FastAPI service is not available.');
-                    new Notice('Error: The FastAPI service is not available.', 5000);
-                    return;
-                }
-
                 // Close the modal
                 this.close();
 
