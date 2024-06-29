@@ -5,6 +5,9 @@ import { createFrontmatter } from './utils';
 
 import ReconnectingEventSource from 'reconnecting-eventsource';
 
+// Define a variable to store the timeout ID outside of the function
+// Used to check if the content has been received after a certain time.
+let contentCheckTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 interface Chapter {
     title: string;
@@ -15,11 +18,13 @@ interface Chapter {
 }
 
 interface ContentState {
+    key: string;
     basename: string;
     frontmatter: string;
     numChapters: number;
     chapters: Chapter[];
 }
+const TIMEOUT_MS = 5000;
 let lastNotice: string = '';
 
 let eventSource: EventSource;
@@ -31,7 +36,7 @@ let noticeIntervalID: ReturnType<typeof setInterval>;
 export async function processAudio(plugin: TranscriberPlugin, input: File | string): Promise<void> {
     new Notice('Starting to process audio.');
     try {
-        handleSSE(plugin);
+        await handleSSE(plugin);
         const formData = createFormData(input, plugin.settings.audioQuality);
 
         const response = await sendTranscriptionRequest(plugin.settings.transcriberApiUrl, formData);
@@ -78,9 +83,10 @@ async function handleResponse(response: Response): Promise<void> {
     logger.debug(`process_audio.handleResponse: Post response message: ${feedback.status}`);
 }
 
-function handleSSE(plugin:TranscriberPlugin): void {
+async function handleSSE(plugin:TranscriberPlugin): Promise<void> {
 
     const state: ContentState = {
+        key: '',
         basename: '',
         frontmatter: '',
         numChapters: 0,
@@ -105,8 +111,8 @@ function handleSSE(plugin:TranscriberPlugin): void {
     eventSource.addEventListener("server-error", (event) => {
         logger.debug(`**error message**: ${event.data}`);
     });
-    eventSource.addEventListener("data", (event) => {
-        handleContentEvent(plugin, event, state);
+    eventSource.addEventListener("data", async (event) => {
+        await handleContentEvent(plugin, event, state);
     });
 
     eventSource.onopen = (event) => {
@@ -114,13 +120,22 @@ function handleSSE(plugin:TranscriberPlugin): void {
     };
 }
 
-function handleContentEvent(plugin:TranscriberPlugin, event: MessageEvent, state: ContentState): void {
+async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent, state: ContentState): Promise<void>  {
     type StateKeys = keyof ContentState;
     try {
+        // Clear existing timeout if it exists
+        if (contentCheckTimeoutId !== null) {
+            clearTimeout(contentCheckTimeoutId);
+            contentCheckTimeoutId = null; // Reset the timeout ID
+        }
         // logger.debug(`process_audio.handleContentEvent: Received a data message. ${event.data}`);
         const data = JSON.parse(event.data);
         logger.debug(`!!! A Content event: ${event.data}!!!`)
-
+        if (data.key) {
+            logger.debug(`**data:key**: ${data.key}`);
+            state.key = data.key;
+            new Notice("processed key");
+        }
         if (data.basename) {
             logger.debug(`**data:basename**: ${data.basename}`);
             state.basename = data.basename;
@@ -159,6 +174,7 @@ function handleContentEvent(plugin:TranscriberPlugin, event: MessageEvent, state
                 new Notice(`Error processing number of chapters: ${error.message}`);
             }
         }
+
          // Ensure all other fields are received before closing the event source
         const missing = missingStateList(state);
         // logger.debug(`--> missing properties: ${missing.join(', ')}`)
@@ -167,11 +183,24 @@ function handleContentEvent(plugin:TranscriberPlugin, event: MessageEvent, state
             saveTranscript(plugin, state);
             closeEventSource(eventSource, state);
             clearInterval(noticeIntervalID);
+            new Notice("Success. Transcript saved.")
         } else {
             // Get received properties
             const receivedProperties = Object.keys(state).filter(key => receivedContent(key as StateKeys, state[key as StateKeys]));
             logger.debug(`--> KNOWN PROPERTIES: ${receivedProperties.join(', ')}`);
             logger.debug(`--> MISSING PROPERTIES: ${missing.join(', ')}`);
+        }
+
+        if (missing.length > 0) {
+            // Wait a bit to see if new messages came in with the missing content before asking for it.
+            contentCheckTimeoutId = setTimeout(async() => {
+                new Notice(`Traffic jam! Asking for missing content: ${missing.join(', ')}`);
+                await processDoneMessage(plugin.settings.transcriberApiUrl, missing, state.key);
+                // For example, check for missing content or finalize processing
+                console.log("Timeout logic executed");
+                // Reset the timeout ID after execution
+                contentCheckTimeoutId = null;
+            }, TIMEOUT_MS); // Time to wait in ms to see if more data messages are to arrive.  If not,`
         }
     } catch (error) {
         logger.error(`process_audio.handleSSEMessage: Error processing metadata: ${error.message}`);
@@ -179,6 +208,39 @@ function handleContentEvent(plugin:TranscriberPlugin, event: MessageEvent, state
     }
 }
 
+async function sendMissingContentRequest(apiUrl: string, missing_contents: string[], key: string): Promise<Response> {
+    logger.debug(`process_audio.sendMissingContentRequest: Sending POST request for missing content with contents: ${missing_contents.join(', ')}`);
+    const requestBody = {
+        key: key,
+        missing_contents: missing_contents,
+    };
+    const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+    });
+    return response;
+}
+
+async function processDoneMessage(transcriberApiUrl: string, missing_contents: string[], key: string, ) {
+    setTimeout(async () => {
+        try {
+            // If no key, start at the beginning.
+            // if (!key) {
+            //     const response = await sendMissingContentRequest(transcriberApiUrl, missing_contents, '');
+            // }
+            // Use the passed transcriberApiUrl instead of this.plugin.settings.transcriberApiUrl
+            const missingContentUrl = transcriberApiUrl.replace("/process_audio", "/missing_content");
+            const response = await sendMissingContentRequest(missingContentUrl, missing_contents, key);
+            await handleResponse(response);
+        } catch (error) {
+            logger.error(`Error during missing content request: ${error}`);
+            new Notice(`Could not connect to the transcriber service. Is it running?`);
+        }
+    }, 5000); // Adjust the timeout as needed
+}
 function closeEventSource(eventSource: EventSource, state: ContentState): void {
     eventSource.close();
     resetContentState(state);
@@ -194,7 +256,7 @@ function resetContentState(state: ContentState): void {
 function addChapter(state: ContentState, data: any) {
     logger.debug("addChapter incoming data:", data);
     // Check if the chapter number already exists in the state
-    const chapterExists = state.chapters.some(chapter => chapter.number === data.number);
+    const chapterExists = state.chapters.some(chapter => chapter.number === data.chapter.number);
     if (!chapterExists) {
         try {
             const chapter: Chapter = {
@@ -202,7 +264,7 @@ function addChapter(state: ContentState, data: any) {
                 start_time: data.chapter.start_time,
                 end_time: data.chapter.end_time,
                 transcript: data.chapter.transcript,
-                number: data.number
+                number: data.chapter.number
             };
             state.chapters.push(chapter);
         } catch (error) {
@@ -216,20 +278,21 @@ function addChapter(state: ContentState, data: any) {
 
 function missingStateList(state: ContentState): string[] {
     const missingProperties: string[] = [];
+    // The property name being pushed is what the server is expecting as the
+    // property for the content state.
     if (state.basename === '') {
         missingProperties.push("basename");
     }
-    if (state.numChapters === 0) state.numChapters = 1;
-    if (state.chapters.length < state.numChapters) {
+    if (state.numChapters === 0) {
+        missingProperties.push("num_chapters");
+    }
+
+    if (state.numChapters > 0 && state.chapters.length !== state.numChapters) {
         missingProperties.push("chapters");
     }
     if (state.frontmatter === '') {
-        missingProperties.push("frontmatter");
+        missingProperties.push("metadata");
     }
-    if (state.numChapters <= 0) {
-        missingProperties.push("numChapters");
-    }
-
     return missingProperties;
 }
 
