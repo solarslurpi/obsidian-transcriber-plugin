@@ -87,7 +87,7 @@ export class InputForm extends Modal {
             await this.processInput(url, 'url');
         } else {
             this.logger.debug(`input_form.handleUrlInput: Error: Invalid YouTube URL - ${url}`);
-            new Notice("Error: Invalid YouTube URL.", 0);
+            new Notice("Error: Invalid YouTube URL.");
         }
     }
 
