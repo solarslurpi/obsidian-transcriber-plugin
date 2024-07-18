@@ -9,9 +9,9 @@ export function isValidYouTubeUrl(url: string): boolean {
     return isValid;
 }
 
-export function isValidMP3(filePath: string): boolean {
-    const isValid = filePath.endsWith('.mp3');
-    return isValid;
+export function isValidAudioFile(fileName: string): boolean {
+    const validExtensions = ['.mp3', '.m4a', '.aac', '.ogg', '.wav', '.flac', '.opus'];
+    return validExtensions.some(ext => fileName.toLowerCase().endsWith(ext));
 }
 
 export async function  ensureFolder(folderPath: string) {

@@ -11,9 +11,9 @@ let contentCheckTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 interface Chapter {
     title: string;
-    start_time: number;
-    end_time: number;
-    transcript: string;
+    start_time: string;
+    end_time: string;
+    text: string;
     number: number;
 }
 
@@ -263,7 +263,7 @@ function addChapter(state: ContentState, data: any) {
                 title: data.chapter.title,
                 start_time: data.chapter.start_time,
                 end_time: data.chapter.end_time,
-                transcript: data.chapter.transcript,
+                text: data.chapter.text,
                 number: data.chapter.number
             };
             state.chapters.push(chapter);
@@ -326,14 +326,11 @@ function saveTranscript(plugin:TranscriberPlugin, state: ContentState): void {
         state.chapters.sort((a, b) => a.number - b.number);
         // Construct content with each chapter
         state.chapters.forEach(chapter => {
-            if (chapter.title !== '') {
+            if (chapter.title.trim() !== '') {
                 content += `# ${chapter.title}\n`;
             }
-        if (chapter.end_time !== 0) {
-            const startTimeFormatted = secondsToYouTubeTimeFormat(chapter.start_time);
-            content += `${startTimeFormatted}\n`;
-        }
-            content += `${chapter.transcript}\n\n`; // Add two new lines for separation
+            content += `${chapter.start_time} - ${chapter.end_time}\n`;
+            content += `${chapter.text}\n\n`; // Add two new lines for separation
         });
         logger.debug(`process_audio.saveTranscript: Saving transcript to ${noteLocation}`)
         if (file) {

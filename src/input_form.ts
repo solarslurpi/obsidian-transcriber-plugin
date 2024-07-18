@@ -1,7 +1,7 @@
 import { App, Modal, Notice, TextComponent, ButtonComponent } from 'obsidian';
 import TranscriberPlugin from "./main";
 import { processAudio } from "./process_audio";
-import { isValidMP3, isValidYouTubeUrl } from './utils';
+import { isValidAudioFile, isValidYouTubeUrl } from './utils';
 import './styles';
 import { Logger } from 'winston';
 
@@ -70,12 +70,12 @@ export class InputForm extends Modal {
     private async handleFileUpload(file: File) {
         this.logger.debug(`input_form.handleFileUpload: ${file.name} selected..`);
 
-        if (isValidMP3(file.name)) {
-            this.logger.debug(`input_form.handleFileUpload: File is a valid MP3 - ${file.name}`);
+        if (isValidAudioFile(file.name)) {
+            this.logger.debug(`input_form.handleFileUpload: File is a valid audio file - ${file.name}`);
             await this.processInput(file, 'file');
         } else {
-            this.logger.debug(`input_form.handleFileUpload: Invalid MP3 file - ${file.name}`);
-            new Notice(`Error: Invalid MP3 file: ${file.name}`, 0);
+            this.logger.debug(`input_form.handleFileUpload: Invalid Audio file - ${file.name}`);
+            new Notice(`Error: Invalid audio file: ${file.name}`, 0);
         }
     }
 
@@ -124,7 +124,7 @@ export class InputForm extends Modal {
         this.createFormGroup('Enter the path to an mp3 file:');
         this.fileInput = this.contentEl.createEl('input', {
             type: 'file',
-            attr: { accept: '.mp3', id: 'mp3-file-upload' }
+            attr: { accept: '.mp3, .m4a, .aac, .ogg, .wav, .flac, .opus', id: 'audio-file-upload' }
         });
         this.fileInput.classList.add('transcriber-input');
 
