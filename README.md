@@ -2,17 +2,60 @@
 
 ### 📢 Description
 
-The Obsidian Transcriber plugin converts MP3 files and YouTube videos into text within Obsidian. Seamlessly integrated, it offers customizable settings, rich metadata, and easy access to transcriptions.
+The Obsidian Transcriber plugin converts an audio file or YouTube video into an Obsidian note.  Both the metadata and the text are captured in the note.
 
 <!-- Note section, Blue -->
 <div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
   <strong>Note:</strong> The Obsidian Transcriber plugin requires a connection to an Obsidian Transcriber service. Refer to the section on setting up and using the Obsidian Transcriber service for details.
 </div>
 
-## ✨ Features
+### 🎥 Demo of Transcript with Chapters and Titles from YouTube Video
 
-- **📝 Transcribes Media**: Converts YouTube videos and MP3 files into Obsidian notes.
-- **📄 Rich Metadata**: Includes YouTube and MP3 metadata as [YAML frontmatter](https://www.wundertech.net/yaml-front-matter-in-obsidian/) to enhance transcript quality.
+YouTube video: [Bluelab Pulse Meter Review](https://www.youtube.com/watch?v=KbZDsrs5roI)
+
+<div style="text-align: center;">
+  <img src="docs\images\youtube_chapters_timestamp_notes_integration.gif" alt="Obsidian Transcriber" style="width: 1200px;">
+</div>
+
+<!-- Note section, Blue -->
+<div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
+  <strong>Note:</strong> The source is a YouTube video with chapters and the Timestamp Notes community plugin installed and enabled.
+</div>
+<br>
+<br>
+
+#### ✨ Features
+After the plugin finishes its work with the Obsidian Transcriber Service, the created note includes:
+- YouTube metadata as YAML frontmatter.
+- A "button" surround the YouTube URL that when clicked will invoke a YouTube player in Obsidian's sidebar.
+  - 👍(_Assuming the [Timestamp Notes community plugin](https://github.com/juliang22/ObsidianTimestampNotes) is installed and enabled_)
+- The transcript broken into chapters with topic titles and timestamps.
+- Below each topic title is a timestamp "button" that when clicked will move the player to the appropriate time in the video.
+  - 👍(_Assuming the [Timestamp Notes community plugin](https://github.com/juliang22/ObsidianTimestampNotes) is installed and enabled_)
+
+### 🎥 Demo of Transcript without Chapters from YouTube Video
+YouTube video: [Jeff Lowenfels - The Updated Soil Food Web](https://www.youtube.com/watch?v=5x9hpXo6sfg)
+
+<div style="text-align: center;">
+  <img src="docs\images\youtube_timestamp_notes_integration.gif" alt="Obsidian Transcriber" style="width: 1200px;">
+</div>
+
+<!-- Note section, Blue -->
+<div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
+  <strong>Note:</strong> The source is a YouTube video without chapters and the Timestamp Notes community plugin installed and enabled.
+</div>
+<br>
+<br>
+
+#### ✨ Features
+The features are identical to the previous example except instead of breaking the text into chapters, the transcribed text is broken up into time segments.
+
+### 🎥 Demo of Transcript from Audio File
+
+
+
+- Transcription of a '.mp3', '.m4a', '.wav', '.flac', '.aac', '.ogg', '.opus' audio file or YouTibe video into an Obsidian note.
+- Captures metadata: Includes YouTube and audio file metadata as [YAML frontmatter](https://www.wundertech.net/yaml-front-matter-in-obsidian/) to enhance transcript quality.
 - **⚙️ Customizable Settings**:
   - **📂 Transcripts Folder**: Specify the vault folder for transcripts. Auto-creates folder if it doesn't exist. Default: `transcripts`.
   - **🌐 Obsidian Transcriber Service URL**: Set the URL to the endpoint running the Obsidian Transcriber Service endpoint. Default: `http://127.0.0.1:8000/api/v1/process_audio`.

@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TextComponent, ButtonComponent } from 'obsidian';
+import { App, Modal, Notice, TextComponent, ButtonComponent, Setting } from 'obsidian';
 import TranscriberPlugin from "./main";
 import { processAudio } from "./process_audio";
 import { isValidAudioFile, isValidYouTubeUrl } from './utils';
@@ -37,28 +37,28 @@ export class InputForm extends Modal {
     }
 
     private async handleClick() {
+        // The submit button was clicked.  Handle the input and determine if the code
+        // can proceed to transcribe based on the user entering either a YouTube url or file upload.
         this.logger.debug('input_form.handleClick:  start.');
 
-        // Retrieve and log the URL input value after trimming
         const urlValue = this.urlInput.getValue().trim();
+        this.logger.debug(`input_form.handleClick.YOUTUBED URL Input: ${urlValue}`);
 
-        // Check and log the file input
         const files = this.fileInput?.files;
-        if (files && files.length > 0) {
-            this.logger.debug(`input_form.handleClick.File Input: ${files[0].name} selected.`);
-        } else {
-            this.logger.debug('input_form.handleClick.File Input: No file selected.');
-        }
+
 
         // Ensure only one input method is used
         if (files && files.length > 0 && urlValue !== "") {
             this.logger.debug('input_form.handleClick.Input Error: Detected both URL and file as input.');
-            new Notice('Please use only one input method: either a URL or a file.');
+            new Notice('Please enter EITHER a URL OR a file.');
+
         } else if (files && files.length > 0) {
+            // FILE UPLOAD WILL BE PROCESSED
             const file = files[0];
             this.logger.debug(`input_form.handleClick.Processing File Upload: ${file.name}`);
             await this.handleFileUpload(file);
         } else if (urlValue !== "") {
+            // YOUTUBE URL WILL BE PROCESSED
             this.logger.debug(`input_form.handleClick.Processing YouTube URL: ${urlValue}`);
             await this.handleUrlInput(urlValue);
         } else {
@@ -68,6 +68,7 @@ export class InputForm extends Modal {
         }
     }
     private async handleFileUpload(file: File) {
+        // Check if the file is a valid audio file before sending it for processing.
         this.logger.debug(`input_form.handleFileUpload: ${file.name} selected..`);
 
         if (isValidAudioFile(file.name)) {
@@ -80,6 +81,7 @@ export class InputForm extends Modal {
     }
 
     private async handleUrlInput(url: string) {
+        // Do a check if valid YouTube URL before sending the audio for processing.
         this.logger.debug(`input_form.handleUrlInput: ${url}`);
 
         if (isValidYouTubeUrl(url)) {
@@ -110,48 +112,108 @@ export class InputForm extends Modal {
 
 
     private render() {
-        this.contentEl.classList.add('transcriber-container');
-
-        const title = this.contentEl.createEl('h3', { text: 'Transcribe YouTube URL or MP3 File' });
-        title.classList.add('transcriber-title');
-
-        this.createFormGroup('Please enter a YouTube URL:');
+        // TITLE HEADER
+        this.contentEl.createEl("h2", { text: "Enter EITHER a YouTube URL - OR - Upload an Audio File",cls: 'centered-content' });
+        // YOUTUBE URL TEXT COMPONENT
         this.urlInput = new TextComponent(this.contentEl);
         this.urlInput.setPlaceholder("Enter YouTube URL here...");
-        this.urlInput.inputEl.classList.add('transcriber-input', 'wide-input');
-
-        this.createFormGroup('- OR -', 'transcriber-subtitle');
-        this.createFormGroup('Enter the path to an mp3 file:');
-        this.fileInput = this.contentEl.createEl('input', {
-            type: 'file',
-            attr: { accept: '.mp3, .m4a, .aac, .ogg, .wav, .flac, .opus', id: 'audio-file-upload' }
+        // AUDIO FILE BUTTON
+        const uploadContainer = this.contentEl.createEl('div', { cls: 'file-upload-container' });
+        const uploadButton = uploadContainer.createEl('button', {
+            text: 'Choose Audio File',
+            cls: 'file-upload-button',
+            attr: { type: 'button' }
         });
-        this.fileInput.classList.add('transcriber-input');
+        const fileNameDisplay = uploadContainer.createEl('span');
 
-        const buttonContainer = this.contentEl.createEl('div', { cls: 'button-container' });
+        // Create the hidden file input
+        this.fileInput = uploadContainer.createEl('input', {
+            type: 'file',
+            attr: {
+                accept: '.mp3, .m4a, .aac, .ogg, .wav, .flac, .opus',
+                id: 'audio-file-upload',
+                class: 'file-upload-input'
+            }
+        });
+        // Add click event to the button to trigger file input
+        uploadButton.addEventListener('click', () => {
+            this.fileInput.click();
+        });
+        // Add change event to the file input to update the filename display
+        this.fileInput.addEventListener('change', () => {
+            if (this.fileInput.files && this.fileInput.files.length > 0) {
+                fileNameDisplay.textContent = `   Selected file: ${this.fileInput.files[0].name}`;
+            } else {
+                fileNameDisplay.textContent = '';
+            }
+        });
+        // SUBMIT BUTTON
+        const submitContainer = this.contentEl.createEl('div', { cls: 'submit-container' });
+        // Create a horizontal line
+        submitContainer.createEl('hr');
+        // Create the submit button
+        const submitButton = submitContainer.createEl('button', {
+            text: 'Submit',
+            cls: 'file-upload-button',
+        });
 
-        const submitButton = new ButtonComponent(buttonContainer)
-            .setButtonText('Submit')
-            .onClick(async () => {
-                // Close the modal
-                this.close();
-
-                // Delegate to handleClick for further processing
-                await this.handleClick();
-            });
-
-        submitButton.buttonEl.classList.add('transcriber-button');
-
-        this.createFormGroup('Click "Submit" after entering a URL or selecting a file.', 'transcriber-subtitle');
+        // HANDLE CLICK
+        submitButton.addEventListener('click', async () => {
+            await this.handleClick();
+        });
+        this.addStyles();
     }
 
-    // Define the createFormGroup method
-    private createFormGroup(text: string, className?: string) {
-        const group = this.contentEl.createEl('div', { cls: 'form-group' });
-        const paragraph = group.createEl('p', { text });
-        paragraph.style.fontWeight = 'bold';
-        if (className) {
-            paragraph.classList.add(className);
-        }
+
+
+
+    private addStyles() {
+        let style = document.createElement('style');
+        style.textContent = `
+            .centered-content {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100%;
+            }
+            .setting-container {
+                display: flex;
+                align-items: center;
+            }
+            .modal-title {
+                display: block;
+                width: 100%;
+                margin-bottom: 10px; /* Adjust the spacing as needed */
+            }
+             .submit-container {
+                display: flex;
+                justify-content: center;
+                margin-top: 20px;
+                gap: 20px;
+            }
+             }
+             .file-upload-container {
+                display: flex;
+                justify-content: left;;
+            }
+            .file-upload-input {
+                display: none;
+            }
+            .file-upload-button {
+                display: inline-block;
+                padding: 0px 20px 0px 20px;
+                background-color: #5c7cfa;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background-color 0.3s ease;
+            }
+            .file-upload-button:hover {
+                background-color: #4263eb;
+            }
+        `;
+        document.head.appendChild(style);
     }
 }
