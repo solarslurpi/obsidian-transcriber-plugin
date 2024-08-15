@@ -1,15 +1,10 @@
 import {  Notice, TFile } from 'obsidian';
 import TranscriberPlugin from './main';
-import { logger } from './logger';
+import {getLogger}  from './logger';
 import { createFrontmatter_object } from './utils';
-import { StateManager, ContentState } from './state_manager';
+import { StateManager} from './state_manager';
 import yaml from 'js-yaml';
 
-import ReconnectingEventSource from 'reconnecting-eventsource';
-
-// Define a variable to store the timeout ID outside of the function
-// Used to check if the content has been received after a certain time.
-let contentCheckTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 export interface Chapter {
     title: string;
@@ -19,30 +14,39 @@ export interface Chapter {
     number: number;
 }
 
-const stateManager = new StateManager();
 
-const TIMEOUT_MS = 5000;
+// Define a variable to store the timeout ID outside of the function
+// Used to check if the content has been received after a certain time.
+let contentCheckTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+const timeoutMs = 5000;
+
+
 let lastNotice: string = '';
 
 let eventSource: EventSource;
 let noticeIntervalID: ReturnType<typeof setInterval>;
 
 
+
 export async function processAudio(plugin: TranscriberPlugin, input: File | string): Promise<void> {
+    const logger = getLogger();
+    const stateManager = new StateManager(logger);
     new Notice('Starting to process audio.');
     try {
-        await handleSSE(plugin);
-        const formData = createFormData(input, plugin.settings.audioQuality);
+        await handleSSE(plugin, stateManager, logger);
+        const formData = createFormData(input, plugin.settings.audioQuality, plugin.settings.computeType, plugin.settings.chapterChunkTime);
 
         const response = await sendTranscriptionRequest(plugin.settings.transcriberApiUrl, formData);
-        await handleResponse(response);
+        await handleResponse(response, logger);
     } catch (error) {
         logger.error(`process_audio.processAudio: Error during transcription request: ${error}`);
         new Notice(`Could not connect to the transcriber service.  Is it running?`);
     }
 }
 
-function createFormData(input: File | string, audioQuality: string): FormData {
+function createFormData(input: File | string, audioQuality: string, computeType: string, chapterChunkTime: number): FormData {
+    const logger = getLogger();
     const formData = new FormData();
     if (input instanceof File) {
         logger.debug(`process_audio.createFormData: Processing audio input (File): ${input.name}`);
@@ -54,10 +58,13 @@ function createFormData(input: File | string, audioQuality: string): FormData {
         throw new Error('Invalid input type');
     }
     formData.append("audio_quality", audioQuality);
+    formData.append("compute_type", computeType);
+    formData.append("chapter_chunk_time", chapterChunkTime.toString());
     return formData;
 }
 
 async function sendTranscriptionRequest(apiUrl: string, formData: FormData): Promise<Response> {
+    const logger = getLogger();
     logger.debug("process_audio.sendTranscriptionRequest: Sending POST request for transcription.");
     const response = await fetch(apiUrl, {
         method: 'POST',
@@ -66,7 +73,7 @@ async function sendTranscriptionRequest(apiUrl: string, formData: FormData): Pro
     return response;
 }
 
-async function handleResponse(response: Response): Promise<void> {
+async function handleResponse(response: Response, logger: any): Promise<void> {
     if (!response.ok) {
         const errorMessage = `process_audio.handleResponse: Network response was not ok: ${response.statusText}`;
         logger.error(errorMessage);
@@ -78,12 +85,13 @@ async function handleResponse(response: Response): Promise<void> {
     logger.debug(`process_audio.handleResponse: Post response message: ${feedback.status}`);
 }
 
-async function handleSSE(plugin:TranscriberPlugin): Promise<void> {
-
-
+async function handleSSE(plugin:TranscriberPlugin, stateManager:StateManager, logger: any): Promise<void> {
     const sseUrl = plugin.settings.transcriberApiUrl.replace("/process_audio", "/sse");
-    eventSource = new ReconnectingEventSource(sseUrl);
-    logger.debug(`process_audio.handleSSE: ReconnectingEventSource created at ${sseUrl}`);
+
+    // eventSource = new ReconnectingEventSource(sseUrl);
+    eventSource = new EventSource(sseUrl);
+    logger.debug(`process_audio: Created sse EventSource with URL: ${eventSource.url}`);
+    // Send a status message every so often if one is available. This way if there might be a lot of message, some will be skipped.
     noticeIntervalID = setInterval(() => {
         if (lastNotice) {
             new Notice(lastNotice);
@@ -96,11 +104,16 @@ async function handleSSE(plugin:TranscriberPlugin): Promise<void> {
         logger.debug(`**status message**: ${event.data}`);
     });
 
+    eventSource.addEventListener("reset-state", (event) => {
+        logger.debug(`**reset-state message**`);
+        stateManager.resetState();
+    });
+
     eventSource.addEventListener("server-error", (event) => {
         logger.debug(`**error message**: ${event.data}`);
     });
     eventSource.addEventListener("data", async (event) => {
-        await handleContentEvent(plugin, event);
+        await handleContentEvent(plugin, event, stateManager, logger);
     });
 
     eventSource.onopen = (event) => {
@@ -108,7 +121,8 @@ async function handleSSE(plugin:TranscriberPlugin): Promise<void> {
     };
 }
 
-async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent): Promise<void>  {
+async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent, stateManager:StateManager, logger: any): Promise<void>  {
+
     try {
         // Clear existing timeout if it exists
         if (contentCheckTimeoutId !== null) {
@@ -146,13 +160,12 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
             try {
                 stateManager.setProperty('numChapters', data.num_chapters);
                 stateManager.removeMissingProperty('num_chapters');
-                new Notice(`Processing ${data.numChapters} chapters`);
+                new Notice(`Processing ${data.num_chapters} chapters`);
             } catch (error) {
                 logger.error(`process_audio.handleContentEvent: Error processing number of chapters: ${error.message}`)
                 new Notice(`Error processing number of chapters: ${error.message}`);
             }
         }
-
         if (data.chapter) {
             logger.debug(`**data:chapter**`);
             try {
@@ -167,38 +180,32 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
                 new Notice(`Error processing number of chapters: ${error.message}`);
             }
         }
-
          // Ensure all other fields are received before closing the event source
         const missing_properties = stateManager.getMissingProperties();
         // logger.debug(`--> missing properties: ${missing.join(', ')}`)
         if (missing_properties.length ===0) {
             logger.debug('-->state is complete');
             saveTranscript(plugin, stateManager);
-            closeEventSource(eventSource);
-            clearInterval(noticeIntervalID);
+            cleanup(eventSource, noticeIntervalID, stateManager, logger);
             new Notice("Success. Transcript saved.")
         } else {
-            logger.debug(`--> MISSING PROPERTIES: ${missing_properties.join(', ')}`);
-        }
-
-        if (missing_properties.length > 0) {
-            // Wait a bit to see if new messages came in with the missing content before asking for it.
             contentCheckTimeoutId = setTimeout(async() => {
-                new Notice(`Traffic jam! Asking for missing content: ${missing_properties.join(', ')}`);
-                await processDoneMessage(plugin.settings.transcriberApiUrl, missing_properties, stateManager.getProperty('key'));
+                logger.debug(`process_audio.handleContentEvent: Retrieving missing content: ${missing_properties.join(', ')}`);
+                retrieveMissingData(plugin.settings.transcriberApiUrl, missing_properties, stateManager.getProperty('key'));
                 // For example, check for missing content or finalize processing
-                logger.debug("Timeout logic executed");
+                logger.debug("Timeout logic has executed.");
                 // Reset the timeout ID after execution
                 contentCheckTimeoutId = null;
-            }, TIMEOUT_MS); // Time to wait in ms to see if more data messages are to arrive.  If not,`
+            }, timeoutMs); // Time to wait in ms to see if more data messages are to arrive.  If not,`
         }
     } catch (error) {
-        logger.error(`Error processing metadata: ${error.message}`);
-        new Notice(`Error processing metadata: ${error.message}`);
+        logger.error(`process_audio.handleContentEvent: Unexpected error: ${error.message}`);
+        cleanup(eventSource, noticeIntervalID, stateManager, logger );
+        new Notice("An unexpected error occurred. Please try again.");
     }
 }
-
 async function sendMissingContentRequest(apiUrl: string, missing_contents: string[], key: string): Promise<Response> {
+    const logger = getLogger();
     logger.debug(`process_audio.sendMissingContentRequest: Sending POST request for missing content with contents: ${missing_contents.join(', ')}`);
     const requestBody = {
         key: key,
@@ -214,30 +221,29 @@ async function sendMissingContentRequest(apiUrl: string, missing_contents: strin
     return response;
 }
 
-async function processDoneMessage(transcriberApiUrl: string, missing_contents: string[], key: string, ) {
-    setTimeout(async () => {
-        try {
-            // If no key, start at the beginning.
-            // if (!key) {
-            //     const response = await sendMissingContentRequest(transcriberApiUrl, missing_contents, '');
-            // }
-            // Use the passed transcriberApiUrl instead of this.plugin.settings.transcriberApiUrl
-            const missingContentUrl = transcriberApiUrl.replace("/process_audio", "/missing_content");
-            const response = await sendMissingContentRequest(missingContentUrl, missing_contents, key);
-            await handleResponse(response);
-        } catch (error) {
-            logger.error(`Error during missing content request: ${error}`);
-            new Notice(`Could not connect to the transcriber service. Is it running?`);
-        }
-    }, 5000); // Adjust the timeout as needed
-}
-function closeEventSource(eventSource: EventSource): void {
-    eventSource.close();
-    stateManager.resetState();
-    logger.debug('process_audio.closeEventSource: EventSource closed.');
+export async function retrieveMissingData(transcriberApiUrl: string, missing_contents: string[], key: string) {
+    const logger = getLogger();
+    if (!key || key === '') {
+        logger.debug("process_audio.retrieveMissingData: No key. Do not know what content to fetch. Returning.");
+        return;
+    }
+    try {
+        logger.debug(`process_audio.retrieveMissingData: Asking for missing content: ${missing_contents.join(', ')}`);
+        const missingContentUrl = transcriberApiUrl.replace("/process_audio", "/missing_content");
+        const response = await sendMissingContentRequest(missingContentUrl, missing_contents, key);
+        await handleResponse(response, logger);
+    } catch (error) {
+        logger.error(`Error during missing content request: ${error}`);
+        new Notice(`Could not connect to the transcriber service. Is it running?`);
+    }
+
 }
 
+
+
+
 function saveTranscript(plugin:TranscriberPlugin, stateManager: StateManager): void {
+    const logger = getLogger();
     try {
         const noteLocation = `${plugin.settings.transcriptsFolder}/${stateManager.getProperty('basename')}.md`;
         const file = plugin.app.vault.getAbstractFileByPath(noteLocation) as TFile;
@@ -279,4 +285,12 @@ function saveTranscript(plugin:TranscriberPlugin, stateManager: StateManager): v
         logger.error(`process_audio.saveTranscript: Error saving transcript: ${error.message}`);
         new Notice(`Error saving transcript: ${error.message}`, 10000);
     }
+}
+
+function cleanup(eventSource: EventSource|null, noticeIntervalID: ReturnType<typeof setInterval>, stateManager: StateManager, logger: any): void {
+    clearInterval(noticeIntervalID);
+    eventSource?.close();
+    eventSource = null;
+    stateManager.resetState();
+    logger.debug(`process_audio.cleanup: Closed event source.`);
 }

@@ -1,41 +1,47 @@
-import { createLogger, format, transports } from 'winston';
-import { Vault } from 'obsidian';
-import { BufferedObsidianTransport } from './buffered_obsidian_transport';
+import * as winston from 'winston';
 
-//The purpose of this file is to configure and initialize a Winston logger that logs messages to both the console and an Obsidian note, using a custom ObsidianTransport to handle the note logging.
-const logger = createLogger({
-  level: 'info', // Default level, will be updated by initializeLogger
-  format: format.combine(
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`),
-    format.colorize()
-  ),
-  transports: [new transports.Console()]
-});
+let loggerInstance: winston.Logger | null = null;
 
-export async function initializeLogger(vault: Vault, logDir: string, logFilename: string, logLevel: string) {
-  logger.level = logLevel; // Update the logger level
+const createLogger = (production: boolean): winston.Logger => {
+    const level = production ? 'info' : 'debug';
+    const consoleFormat = winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+    );
+    const fileFormat = winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+    );
 
-  if (vault && logDir && logFilename) {
-    const logFilePath = `${logDir}/${logFilename}`;
-    const obsidianTransport = new BufferedObsidianTransport({
-      vault,
-      logFilePath,
-      format: format.combine(
-        format.uncolorize(),
-        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        format.json(),
-        format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`)
-      )
+    const transports: winston.transport[] = [
+        new winston.transports.Console({ level, format: consoleFormat })
+    ];
+
+    if (!production) {
+        transports.push(new winston.transports.File({ filename: 'debug.log', level: 'debug', format: fileFormat }));
+    }
+
+    return winston.createLogger({
+        level,
+        format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json()
+        ),
+        transports
     });
+};
 
-    // Initialize the log file with YAML frontmatter if it doesn't exist
-    await obsidianTransport.initializeLogFile();
+export const initializeLogger = (production: boolean): winston.Logger => {
+    if (!loggerInstance) {
+        loggerInstance = createLogger(production);
+    }
+    return loggerInstance;
+};
 
-    // Add the Obsidian transport
-    logger.add(obsidianTransport);
-
-  }
-}
-
-export { logger };
+export const getLogger = (): winston.Logger => {
+    if (!loggerInstance) {
+        console.error('uh oh');
+        // throw new Error('Logger is not initialized. Call initializeLogger first.');
+    }
+    return loggerInstance!;
+};

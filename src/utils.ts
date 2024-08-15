@@ -1,16 +1,20 @@
-import {logger} from './logger';
+// Note: Cannot use logging yet, as the plugin is not yet initialized.
 
 import ytdl from 'ytdl-core';
 
 
+
 export function isValidYouTubeUrl(url: string): boolean {
-    // const videoRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/|live\/)|youtu\.be\/)[\w-]+(&[\w-]+)*$/;
-    // // const playlistRegex = /^(https?:\/\/)?(www\.)?youtube\.com\/playlist\?list=[\w-]+$/;
-    // const isValid = videoRegex.test(url); // || playlistRegex.test(url);
-    const isValid =  ytdl.validateURL(url);
-    logger.debug(`valid YouTube URL: ${isValid}`);
+    const videoRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/|live\/)|youtu\.be\/)[\w-]+(&[\w-]+)*$/;
+    const isValidRegex = videoRegex.test(url);
+    // failed on https://www.youtube.com/live/TkNTuFF2t-c, so added in the regex.  There is duplicate, but just to make sure...
+    const isValidYtdl = ytdl.validateURL(url);
+    const isValid = isValidRegex || isValidYtdl;
+    if (!isValid) {
+        console.error(`Invalid YouTube URL: ${url}`);
+    }
     return isValid;
-};
+}
 
 export function isValidAudioFile(fileName: string): boolean {
     const validExtensions = ['.mp3', '.m4a', '.aac', '.ogg', '.wav', '.flac', '.opus'];
@@ -18,16 +22,14 @@ export function isValidAudioFile(fileName: string): boolean {
 }
 
 export async function  ensureFolder(folderPath: string) {
-    logger.debug(`utils.ensureFolder.folder path: ${folderPath}`);
     try {
         await this.app.vault.createFolder(folderPath);
-        logger.debug("Transcripts folder created successfully.");
         return true;
     } catch (error) {
         if (error.message.includes("Folder already exists.")) {
             return true;
         } else {
-            logger.error(`utils.ensureFolder.Failed to create transcripts folder: ${error}`);
+            console.error(`utils.ensureFolder.Failed to create transcripts folder: ${error}`);
             throw new Error(
                 "Failed to create transcripts folder: " + error.message
             );

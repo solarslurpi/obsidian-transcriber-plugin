@@ -1,6 +1,5 @@
 import { Frontmatter } from './utils';
 import { Chapter } from './process_audio';
-import { logger } from './logger';
 
 
 export interface ContentState {
@@ -28,29 +27,26 @@ export class StateManager {
         audio_quality: '',
 
     };
-    private initialState: ContentState = {
-        key: '',
-        basename: '',
-        frontmatter: this.emptyFrontmatter,
-        numChapters: 0,
-        chapters: []
-    };
-    private state: ContentState;
 
-    constructor() {
-        this.state = this.initialState;
+    private state: ContentState;
+    private logger: any;
+
+
+    constructor(logger:any) {
+        this.logger = logger
+        this.resetState();
     }
     setProperty<K extends keyof ContentState>(key: K, value: ContentState[K]): void {
         this.state = {
             ...this.state,
             [key]: value
         };
-        logger.debug(`process_audio.setProperty: Setting ${key}`);
+        this.logger.debug(`process_audio.setProperty: Setting ${key}`);
     }
 
     getProperty<K extends keyof ContentState>(key: K): ContentState[K] {
         const value = this.state[key];
-        logger.debug(`process_audio.getProperty:  ${key} `);
+        this.logger.debug(`process_audio.getProperty:  ${key} `);
         return value;
     }
 
@@ -91,7 +87,13 @@ export class StateManager {
     }
 
     resetState() {
-        this.state = this.initialState;
+        this.state = {
+            key: '',
+            basename: '',
+            frontmatter: this.emptyFrontmatter,
+            numChapters: 0,
+            chapters: []
+        };
     }
 
     checkChaptersComplete(): boolean {

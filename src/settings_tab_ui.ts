@@ -1,7 +1,6 @@
 // SettingsTab.ts
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
 import TranscriberPlugin from './main';
-import {logger} from './logger'
 
 export class SettingsTab extends PluginSettingTab {
     plugin: TranscriberPlugin;
@@ -53,26 +52,51 @@ export class SettingsTab extends PluginSettingTab {
                         });
             });
 
-        // In your settings tab
+        // Compute Type Setting
         new Setting(containerEl)
-            .setName('Log Level')
-            .setDesc('Set the log level for the plugin')
-            .addDropdown(dropdown => dropdown
-                .addOption('error', 'Error')
-                .addOption('warn', 'Warning')
-                .addOption('info', 'Info')
-                .addOption('http', 'HTTP')
-                .addOption('verbose', 'Verbose')
-                .addOption('debug', 'Debug')
-                .addOption('silly', 'Silly')
-                .setValue(this.plugin.settings.logLevel || 'info')
+            .setName('Compute Type')
+            .setDesc('Select the desired compute type')
+            .addDropdown(dropdown => {
+                dropdown.addOption('int8', 'int8')
+                    .addOption('int8_float32', 'int8_float32')
+                    .addOption('int8_float16', 'int8_float16')
+                    .addOption('int8_bfloat16', 'int8_bfloat16')
+                    .addOption('int16', 'int16')
+                    .addOption('float16', 'float16')
+                    .addOption('bfloat16', 'bfloat16')
+                    .addOption('float32', 'float32')
+                    .setValue(this.plugin.settings.computeType)
+                    .onChange(async (value) => {
+                        this.plugin.settings.computeType = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        // Amount of transcript time to chunk the transcript into time-based chapters.
+        new Setting(containerEl)
+            .setName('Chapter Chunk Time')
+            .setDesc('Used to determine the amount of time to chunk the transcript into chapters if there is no chapter metadata.')
+            .addText(text => text
+                .setValue(this.plugin.settings.chapterChunkTime.toFixed(1))
                 .onChange(async (value) => {
-                    logger.level = value
-                    this.plugin.settings.logLevel = value;
-                    await this.plugin.saveSettings();
+                    const parsedValue = parseFloat(value.trim());
+                    if (!isNaN(parsedValue)) {
+                        this.plugin.settings.chapterChunkTime = parsedValue;
+                        await this.plugin.saveSettings();
+                    } else {
+                        new Notice(`${value} is not a valid number. Please enter a valid number.`);
+                    }
                 }));
 
-
+        // Log Level Setting
+        new Setting(containerEl)
+            .setName('Production')
+            .setDesc('Sets the verbosity of logging.  Production logs only error messages to the console.  If off, debug to error messages are logged to the console and a app_debug.log file.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.production)
+                .onChange(async (value) => {
+                    this.plugin.settings.production = value;
+                    await this.plugin.saveSettings();
+                }));
 
     }
 }
