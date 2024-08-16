@@ -1,9 +1,10 @@
 import {  Notice, TFile } from 'obsidian';
 import TranscriberPlugin from './main';
 import {getLogger}  from './logger';
-import { createFrontmatter_object } from './utils';
+import { createFrontmatter_object, isValidYouTubeUrl } from './utils';
 import { StateManager} from './state_manager';
 import yaml from 'js-yaml';
+import * as path from 'path';
 
 
 export interface Chapter {
@@ -60,6 +61,7 @@ function createFormData(input: File | string, audioQuality: string, computeType:
     formData.append("audio_quality", audioQuality);
     formData.append("compute_type", computeType);
     formData.append("chapter_chunk_time", chapterChunkTime.toString());
+    logger.debug(`compute_type: ${computeType}, chapter chunk time: ${chapterChunkTime}`);
     return formData;
 }
 
@@ -256,8 +258,17 @@ function saveTranscript(plugin:TranscriberPlugin, stateManager: StateManager): v
         const frontmatterString = yaml.dump(frontmatter);
 
         content += `---\n${frontmatterString}---\n\n`;
-        // Create a code block for the YouTube URL based on the Timestamp Notes plugin format
-        content += `\`\`\`timestamp-url\n${frontmatter.audio_source}\n\`\`\`\n\n`;
+        // Create a code block based on the Timestamp Notes plugin format
+        if (isValidYouTubeUrl(frontmatter.audio_source) ) {
+            content += `\`\`\`timestamp-url\n${frontmatter.audio_source}\n\`\`\`\n\n`;
+        }
+        else {
+            let static_file_url = plugin.settings.transcriberApiUrl.replace(/\/api\/v1\/process_audio$/, "/audio/");
+            const basename = path.basename(frontmatter.audio_source);
+            static_file_url += basename;
+            content += `\`\`\`timestamp-url\n${static_file_url}\n\`\`\`\n\n`;
+        }
+
         // Add the chapters
         // Most likely the chapters came in order, but just in case, sort them by number.
         const chapters = stateManager.getProperty('chapters');

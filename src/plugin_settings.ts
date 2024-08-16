@@ -6,14 +6,14 @@ export interface PluginSettings {
     audioQuality:string;
     computeType:string;
     chapterChunkTime:number;
-    production:boolean;
+    debug:boolean;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
     transcriptsFolder: 'transcripts',
-    transcriberApiUrl: 'http://127.0.0.1:8000/api/v1/process_audio',
-    audioQuality: 'medium',
+    transcriberApiUrl: 'http://127.0.0.1:8081/api/v1/process_audio',
+    audioQuality: 'small',
     computeType: 'int8',
     chapterChunkTime: 10,
-    production: true
+    debug: false
 };

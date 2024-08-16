@@ -15,7 +15,7 @@ export default class TranscriberPlugin extends Plugin {
 
         // Load Settings
         await this.loadSettings();
-        this.logger = initializeLogger(this.settings.production);
+        this.logger = initializeLogger(this.settings.debug);
         this.logger.debug('obsidian-transcriber: Logger loaded successfully.');
 
         // Add UI features

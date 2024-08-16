@@ -1,15 +1,15 @@
 # Obsidian Transcriber Plugin
 
-### 📢 Description
+# 📢 Description
 
 The Obsidian Transcriber plugin converts an audio file or YouTube video into an Obsidian note.  Both the metadata and the text are captured in the note.
 
 <!-- Note section, Blue -->
 <div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
-  <strong>Note:</strong> The Obsidian Transcriber plugin requires a connection to an Obsidian Transcriber service. Refer to the section on setting up and using the Obsidian Transcriber service for details.
+  <strong>Note:</strong> The Obsidian Transcriber plugin requires a connection to an <a href="https://github.com/solarslurpi/obsidian-transcriber-service">Obsidian Transcriber service</a>.
 </div>
 
-### 🎥 Demo of Transcript with Chapters and Titles from YouTube Video
+# 🎥 Demo of Transcript with Chapters and Titles from YouTube Video
 
 YouTube video: [Bluelab Pulse Meter Review](https://www.youtube.com/watch?v=KbZDsrs5roI)
 
@@ -24,16 +24,16 @@ YouTube video: [Bluelab Pulse Meter Review](https://www.youtube.com/watch?v=KbZD
 <br>
 <br>
 
-#### ✨ Features
+## ✨ Features
 After the plugin finishes its work with the Obsidian Transcriber Service, the created note includes:
 - YouTube metadata as YAML frontmatter.
-- A "button" surround the YouTube URL that when clicked will invoke a YouTube player in Obsidian's sidebar.
+- A YouTube URL "button" that when clicked invokes a YouTube player in Obsidian's sidebar.
   - 👍(_Assuming the [Timestamp Notes community plugin](https://github.com/juliang22/ObsidianTimestampNotes) is installed and enabled_)
 - The transcript broken into chapters with topic titles and timestamps.
-- Below each topic title is a timestamp "button" that when clicked will move the player to the appropriate time in the video.
+- Below each topic title is a timestamp "button" that when clicked will move the player to that time in the video.
   - 👍(_Assuming the [Timestamp Notes community plugin](https://github.com/juliang22/ObsidianTimestampNotes) is installed and enabled_)
 
-### 🎥 Demo of Transcript without Chapters from YouTube Video
+# 🎥 Demo of Transcript *without* Chapters from YouTube Video
 YouTube video: [Jeff Lowenfels - The Updated Soil Food Web](https://www.youtube.com/watch?v=5x9hpXo6sfg)
 
 <div style="text-align: center;">
@@ -47,20 +47,33 @@ YouTube video: [Jeff Lowenfels - The Updated Soil Food Web](https://www.youtube.
 <br>
 <br>
 
-#### ✨ Features
+## ✨ Features
 The features are identical to the previous example except instead of breaking the text into chapters, the transcribed text is broken up into time segments.
 
-### 🎥 Demo of Transcript from Audio File
+# 🎥 Demo of Transcript from Audio File
 
+this.files is a FileList
+this.files[0]
+- name: test.mp3
+- path: C:\\Users\\happy\\Downloads\\test.mp3"
+- size: 17517
+- type: "audio/mp3"
 
+## ✨ Features
 
-- Transcription of a '.mp3', '.m4a', '.wav', '.flac', '.aac', '.ogg', '.opus' audio file or YouTibe video into an Obsidian note.
-- Captures metadata: Includes YouTube and audio file metadata as [YAML frontmatter](https://www.wundertech.net/yaml-front-matter-in-obsidian/) to enhance transcript quality.
-- **⚙️ Customizable Settings**:
-  - **📂 Transcripts Folder**: Specify the vault folder for transcripts. Auto-creates folder if it doesn't exist. Default: `transcripts`.
-  - **🌐 Obsidian Transcriber Service URL**: Set the URL to the endpoint running the Obsidian Transcriber Service endpoint. Default: `http://127.0.0.1:8000/api/v1/process_audio`.
-  - **🎧 Audio Quality**: Choose audio quality from `tiny` to `large` using Whisper. Higher quality increases processing time. Default: `medium`.
-  - **🐞 Log Level**: Set logging level for debugging. Default: `debug`.
+# 🛠️ Installation
+
+# ⚙️ Settings
+Configuration properties are available through the Settings UI.
+![settings ui](docs/images/Settings_UI.jpg)
+
+The default values are set in [plugin_settings.ts](https://github.com/solarslurpi/obsidian-transcriber-plugin/blob/58dd6990c32ae2e495b5a5e1a36097438497e4ec/src/plugin_settings.ts#L12)
+  - **📂 Transcripts Folder**: Specify the vault folder for transcripts. The folder will be created if it does not exist.
+  - **🌐 Obsidian Transcriber Service URL**: Set the URL to the endpoint running the Obsidian Transcriber Service endpoint.
+  - **🎧 Audio Quality**: Choose audio quality from `tiny` to `large`. Higher quality increases processing time.
+  - **💻 Compute Type**:  The compute type determines the precision and efficiency of the computations performed by the model.
+  - **📘 Chapter Chunk Time**: The amount of time to chunk the transcript into chapters if there is no chapter info in the metadata.
+  - **🐞 Debug**: If toggled on, debug, warning, and error messages are sent to the console debugger.  If not on, only error messages are sent to the console.
 
 
 

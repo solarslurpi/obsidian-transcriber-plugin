@@ -89,12 +89,12 @@ export class SettingsTab extends PluginSettingTab {
 
         // Log Level Setting
         new Setting(containerEl)
-            .setName('Production')
-            .setDesc('Sets the verbosity of logging.  Production logs only error messages to the console.  If off, debug to error messages are logged to the console and a app_debug.log file.')
+            .setName('Debug')
+            .setDesc('Sets the verbosity of logging.  Debug through Error messages will be written to the console if toggled to Debug.  If Debug is toggled off, only Error messages will be written.')
             .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.production)
+                .setValue(this.plugin.settings.debug)
                 .onChange(async (value) => {
-                    this.plugin.settings.production = value;
+                    this.plugin.settings.debug = value;
                     await this.plugin.saveSettings();
                 }));
 
