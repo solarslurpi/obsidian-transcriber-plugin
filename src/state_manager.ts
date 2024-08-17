@@ -25,6 +25,7 @@ export class StateManager {
         download_time: '',
         transcription_time: '',
         audio_quality: '',
+        compute_type: ''
 
     };
 

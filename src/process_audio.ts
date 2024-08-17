@@ -149,6 +149,9 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
             try {
                 logger.debug(`**data:frontmatter**`);
                 const frontmatter = createFrontmatter_object(data.metadata);
+                // Pretty print the frontmatter object
+                const prettyFrontmatter = JSON.stringify(frontmatter, null, 2);
+                logger.debug(`${prettyFrontmatter}`);
                 stateManager.setProperty('frontmatter', frontmatter);
                 stateManager.removeMissingProperty('metadata');
                 new Notice("processed metadata");

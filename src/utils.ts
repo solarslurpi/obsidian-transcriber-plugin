@@ -48,6 +48,7 @@ export type Frontmatter = {
     download_time: string;
     transcription_time: string;
     audio_quality: string;
+    compute_type: string;
     [key: string]: string; // Index signature
 }
 
@@ -55,8 +56,10 @@ export type Frontmatter = {
 type Metadata = {
   audio_input: {
     youtube_url: string | null;
-    audio_filepath: string | null;
+    audio_filename: string | null;
     audio_quality: string | null;
+    compute_type: string | null;
+    chapter_chunk_time: number | null;
   };
   title: string;
   tags: string  | null;
@@ -70,7 +73,7 @@ type Metadata = {
 };
 export function createFrontmatter_object(metadata: Metadata): Frontmatter {
   const frontmatter: Frontmatter = {
-    "audio_source": metadata.audio_input.youtube_url || metadata.audio_input.audio_filepath || "",
+    "audio_source": metadata.audio_input.youtube_url || metadata.audio_input.audio_filename || "",
     "title": metadata.title,
     "tags": metadata.tags || "",
     "description": metadata.description || "",
@@ -81,6 +84,7 @@ export function createFrontmatter_object(metadata: Metadata): Frontmatter {
     "download_time": metadata.download_time,
     "transcription_time": metadata.transcription_time,
     "audio_quality" : metadata.audio_input.audio_quality || "unknown",
+    "compute_type": metadata.audio_input.compute_type || "unknown"
 
   };
 

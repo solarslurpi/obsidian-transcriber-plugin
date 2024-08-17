@@ -44,22 +44,22 @@ YouTube video: [Jeff Lowenfels - The Updated Soil Food Web](https://www.youtube.
 <div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
   <strong>Note:</strong> The source is a YouTube video without chapters and the Timestamp Notes community plugin installed and enabled.
 </div>
-<br>
-<br>
 
 ## ✨ Features
 The features are identical to the previous example except instead of breaking the text into chapters, the transcribed text is broken up into time segments.
 
 # 🎥 Demo of Transcript from Audio File
 
-this.files is a FileList
-this.files[0]
-- name: test.mp3
-- path: C:\\Users\\happy\\Downloads\\test.mp3"
-- size: 17517
-- type: "audio/mp3"
+<div style="text-align: center;">
+  <img src="docs\images\audio_timestamp_notes_integration.gif" alt="Obsidian Transcriber" style="width: 1200px;">
+</div>
 
 ## ✨ Features
+Compared with audio sources that originate from YouTube, the front matter of an uploaded audio file contains far less metadata.  The transcript is broken into chapters based on the time chunk setting in the settings UI.
+<!-- Note section, Blue -->
+<div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
+  <strong>Note:</strong> 😔The integration with the Timestamp Notes community plugin will load a player and start the audio.  However, clicking on the timestamp will not move the player to that time.
+</div>
 
 # 🛠️ Installation
 
