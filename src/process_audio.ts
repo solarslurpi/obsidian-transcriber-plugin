@@ -1,6 +1,6 @@
 import {  Notice, TFile } from 'obsidian';
 import TranscriberPlugin from './main';
-import {getLogger}  from './logger';
+import { Logger } from 'winston';
 import { createFrontmatter_object, isValidYouTubeUrl } from './utils';
 import { StateManager} from './state_manager';
 import yaml from 'js-yaml';
@@ -30,15 +30,15 @@ let noticeIntervalID: ReturnType<typeof setInterval>;
 
 
 
-export async function processAudio(plugin: TranscriberPlugin, input: File | string): Promise<void> {
-    const logger = getLogger();
+export async function processAudio(plugin: TranscriberPlugin, input: File | string, logger: Logger): Promise<void> {
+    // Create an empty state to be filled in by incoming content.
     const stateManager = new StateManager(logger);
     new Notice('Starting to process audio.');
     try {
         await handleSSE(plugin, stateManager, logger);
-        const formData = createFormData(input, plugin.settings.audioQuality, plugin.settings.computeType, plugin.settings.chapterChunkTime);
+        const formData = createFormData(input, plugin.settings.audioQuality, plugin.settings.computeType, plugin.settings.chapterChunkTime, logger);
 
-        const response = await sendTranscriptionRequest(plugin.settings.transcriberApiUrl, formData);
+        const response = await sendTranscriptionRequest(plugin.settings.transcriberApiUrl, formData, logger);
         await handleResponse(response, logger);
     } catch (error) {
         logger.error(`process_audio.processAudio: Error during transcription request: ${error}`);
@@ -46,8 +46,7 @@ export async function processAudio(plugin: TranscriberPlugin, input: File | stri
     }
 }
 
-function createFormData(input: File | string, audioQuality: string, computeType: string, chapterChunkTime: number): FormData {
-    const logger = getLogger();
+function createFormData(input: File | string, audioQuality: string, computeType: string, chapterChunkTime: number, logger: Logger): FormData {
     const formData = new FormData();
     if (input instanceof File) {
         logger.debug(`process_audio.createFormData: Processing audio input (File): ${input.name}`);
@@ -65,8 +64,7 @@ function createFormData(input: File | string, audioQuality: string, computeType:
     return formData;
 }
 
-async function sendTranscriptionRequest(apiUrl: string, formData: FormData): Promise<Response> {
-    const logger = getLogger();
+async function sendTranscriptionRequest(apiUrl: string, formData: FormData, logger: Logger): Promise<Response> {
     logger.debug("process_audio.sendTranscriptionRequest: Sending POST request for transcription.");
     const response = await fetch(apiUrl, {
         method: 'POST',
@@ -135,14 +133,13 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
         const data = JSON.parse(event.data);
         if (data.key) {
             logger.debug(`**data:key**: ${data.key}`);
+            // The key came in.  Add it to the state.
             stateManager.setProperty('key',data.key);
-            stateManager.removeMissingProperty('key');
             new Notice("processed key");
         }
         if (data.basename) {
             logger.debug(`**data:basename**: ${data.basename}`);
             stateManager.setProperty('basename', data.basename);
-            stateManager.removeMissingProperty('basename');
             new Notice("processed basename");
         }
         if (data.metadata) {
@@ -153,7 +150,6 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
                 const prettyFrontmatter = JSON.stringify(frontmatter, null, 2);
                 logger.debug(`${prettyFrontmatter}`);
                 stateManager.setProperty('frontmatter', frontmatter);
-                stateManager.removeMissingProperty('metadata');
                 new Notice("processed metadata");
             } catch (error) {
                 logger.error(`process_audio.handleContentEvent: Error processing metadata: ${error.message}`)
@@ -164,7 +160,6 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
             logger.debug(`**data:num_chapters**: ${data.num_chapters}`);
             try {
                 stateManager.setProperty('numChapters', data.num_chapters);
-                stateManager.removeMissingProperty('num_chapters');
                 new Notice(`Processing ${data.num_chapters} chapters`);
             } catch (error) {
                 logger.error(`process_audio.handleContentEvent: Error processing number of chapters: ${error.message}`)
@@ -174,10 +169,15 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
         if (data.chapter) {
             logger.debug(`**data:chapter**`);
             try {
+                // Log the chapter number
+                if (data.chapter.number !== undefined) {
+                    logger.debug(`Chapter number: ${data.chapter.number}`);
+                } else {
+                    logger.debug(`Chapter number is missing in the data.`);
+                }
                 stateManager.addChapter(data.chapter);
                 if (stateManager.checkChaptersComplete()) {
                     logger.debug(`process_audio.handleContentEvent: All chapters received.`);
-                    stateManager.removeMissingProperty('chapters');
                 }
 
             } catch (error) {
@@ -185,18 +185,18 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
                 new Notice(`Error processing number of chapters: ${error.message}`);
             }
         }
-         // Ensure all other fields are received before closing the event source
-        const missing_properties = stateManager.getMissingProperties();
-        // logger.debug(`--> missing properties: ${missing.join(', ')}`)
-        if (missing_properties.length ===0) {
+        if (stateManager.isComplete()) {
             logger.debug('-->state is complete');
-            saveTranscript(plugin, stateManager);
+            saveTranscript(plugin, stateManager, logger);
             cleanup(eventSource, noticeIntervalID, stateManager, logger);
             new Notice("Success. Transcript saved.")
         } else {
+            // After a time period that should be longer than an expected update of data, assume the data was lost and
+            // needs to be resent.
+            const missing_properties = stateManager.getMissingProperties()
             contentCheckTimeoutId = setTimeout(async() => {
                 logger.debug(`process_audio.handleContentEvent: Retrieving missing content: ${missing_properties.join(', ')}`);
-                retrieveMissingData(plugin.settings.transcriberApiUrl, missing_properties, stateManager.getProperty('key'));
+                retrieveMissingData(plugin.settings.transcriberApiUrl, missing_properties, stateManager.getProperty('key'), logger);
                 // For example, check for missing content or finalize processing
                 logger.debug("Timeout logic has executed.");
                 // Reset the timeout ID after execution
@@ -205,12 +205,11 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
         }
     } catch (error) {
         logger.error(`process_audio.handleContentEvent: Unexpected error: ${error.message}`);
-        cleanup(eventSource, noticeIntervalID, stateManager, logger );
+        cleanup(eventSource, noticeIntervalID, stateManager, logger);
         new Notice("An unexpected error occurred. Please try again.");
     }
 }
-async function sendMissingContentRequest(apiUrl: string, missing_contents: string[], key: string): Promise<Response> {
-    const logger = getLogger();
+async function sendMissingContentRequest(apiUrl: string, missing_contents: string[], key: string, logger: Logger): Promise<Response> {
     logger.debug(`process_audio.sendMissingContentRequest: Sending POST request for missing content with contents: ${missing_contents.join(', ')}`);
     const requestBody = {
         key: key,
@@ -226,8 +225,7 @@ async function sendMissingContentRequest(apiUrl: string, missing_contents: strin
     return response;
 }
 
-export async function retrieveMissingData(transcriberApiUrl: string, missing_contents: string[], key: string) {
-    const logger = getLogger();
+export async function retrieveMissingData(transcriberApiUrl: string, missing_contents: string[], key: string, logger: Logger) {
     if (!key || key === '') {
         logger.debug("process_audio.retrieveMissingData: No key. Do not know what content to fetch. Returning.");
         return;
@@ -235,7 +233,7 @@ export async function retrieveMissingData(transcriberApiUrl: string, missing_con
     try {
         logger.debug(`process_audio.retrieveMissingData: Asking for missing content: ${missing_contents.join(', ')}`);
         const missingContentUrl = transcriberApiUrl.replace("/process_audio", "/missing_content");
-        const response = await sendMissingContentRequest(missingContentUrl, missing_contents, key);
+        const response = await sendMissingContentRequest(missingContentUrl, missing_contents, key, logger);
         await handleResponse(response, logger);
     } catch (error) {
         logger.error(`Error during missing content request: ${error}`);
@@ -247,8 +245,7 @@ export async function retrieveMissingData(transcriberApiUrl: string, missing_con
 
 
 
-function saveTranscript(plugin:TranscriberPlugin, stateManager: StateManager): void {
-    const logger = getLogger();
+function saveTranscript(plugin:TranscriberPlugin, stateManager: StateManager, logger: Logger): void {
     try {
         const noteLocation = `${plugin.settings.transcriptsFolder}/${stateManager.getProperty('basename')}.md`;
         const file = plugin.app.vault.getAbstractFileByPath(noteLocation) as TFile;

@@ -99,9 +99,9 @@ export class InputForm extends Modal {
 
         try {
             if (type === 'file') {
-                await processAudio(this.plugin, input as File);
+                await processAudio(this.plugin, input as File, this.logger);
             } else {
-                await processAudio(this.plugin, input as string);
+                await processAudio(this.plugin, input as string, this.logger);
             }
         } catch (error) {
             new Notice(`Error: Attempting to process ${description}. ${error}`, 0);
@@ -117,6 +117,8 @@ export class InputForm extends Modal {
         // YOUTUBE URL TEXT COMPONENT
         this.urlInput = new TextComponent(this.contentEl);
         this.urlInput.setPlaceholder("Enter YouTube URL here...");
+        this.urlInput.inputEl.classList.add('youtube-url-input');
+        this.contentEl.createEl("h2",{text: "         -OR-"})
         // AUDIO FILE BUTTON
         const uploadContainer = this.contentEl.createEl('div', { cls: 'file-upload-container' });
         const uploadButton = uploadContainer.createEl('button', {
@@ -194,7 +196,8 @@ export class InputForm extends Modal {
              }
              .file-upload-container {
                 display: flex;
-                justify-content: left;;
+                justify-content: left;
+
             }
             .file-upload-input {
                 display: none;
@@ -212,6 +215,9 @@ export class InputForm extends Modal {
             }
             .file-upload-button:hover {
                 background-color: #4263eb;
+            }
+            .youtube-url-input {
+                margin-bottom: 10px; /* Add margin spacing */
             }
         `;
         document.head.appendChild(style);

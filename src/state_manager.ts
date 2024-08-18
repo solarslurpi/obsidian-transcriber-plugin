@@ -51,19 +51,24 @@ export class StateManager {
         return value;
     }
 
+    isComplete(): boolean {
+        const missingProperties = this.getMissingProperties();
+        return missingProperties.length === 0;
+    }
+
     getMissingProperties(): string[] {
         const missingProperties: string[] = [];
-
         if (this.state.key === '') {
             missingProperties.push("key");
         }
         if (this.state.basename === '') {
             missingProperties.push("basename");
+
         }
         if (this.state.numChapters === 0) {
             missingProperties.push("num_chapters");
-            // If there the number of chapters are not known, the chapters themselve are also not known.
-            missingProperties.push("chapters");
+
+
         // numChapters will always be positive, as we all should.  Go get 'em numChapters!
         } else if (!this.checkChaptersComplete()) {
             missingProperties.push("chapters");
@@ -71,17 +76,10 @@ export class StateManager {
         if (Object.keys(this.emptyFrontmatter).every(key => this.state.frontmatter[key] === this.emptyFrontmatter[key])) {
             missingProperties.push("frontmatter");
         }
-
+        // Log the missing properties
+        this.logger.debug(`Missing properties: ${missingProperties.join(', ')}`);
         return missingProperties;
     }
-
-    removeMissingProperty(property: string) {
-            const missingProperties = this.getMissingProperties();
-            const index = missingProperties.indexOf(property);
-            if (index > -1) {
-                missingProperties.splice(index, 1);
-            }
-        };
 
     addChapter(chapter: any) {
         this.state.chapters.push(chapter);
