@@ -4,6 +4,7 @@ import { processAudio } from "./process_audio";
 import { isValidAudioFile, isValidYouTubeUrl } from './utils';
 import './styles';
 import { Logger } from 'winston';
+import { setIsProcessing, getIsProcessing} from './process_audio';
 
 export class InputForm extends Modal {
     // Instance properties.
@@ -13,6 +14,7 @@ export class InputForm extends Modal {
     urlInput: TextComponent;
     healthCheckUrl: string;
     logger: Logger;
+    submitButton: HTMLButtonElement;
 
     constructor(app: App, plugin: TranscriberPlugin, logger:Logger) {
         super(app);
@@ -40,6 +42,11 @@ export class InputForm extends Modal {
         // The submit button was clicked.  Handle the input and determine if the code
         // can proceed to transcribe based on the user entering either a YouTube url or file upload.
         this.logger.debug('input_form.handleClick:  start.');
+        if (getIsProcessing()) {
+            new Notice("A transcription is in progress. Please wait for it to complete.")
+            this.logger.debug('input_form.handleClick:  Processing in progress. Ignoring click.');
+            return;
+        }
 
         const urlValue = this.urlInput.getValue().trim();
         this.logger.debug(`input_form.handleClick.YOUTUBED URL Input: ${urlValue}`);
@@ -154,13 +161,13 @@ export class InputForm extends Modal {
         // Create a horizontal line
         submitContainer.createEl('hr');
         // Create the submit button
-        const submitButton = submitContainer.createEl('button', {
+        this.submitButton = submitContainer.createEl('button', {
             text: 'Submit',
             cls: 'file-upload-button',
         });
 
         // HANDLE CLICK
-        submitButton.addEventListener('click', async () => {
+        this.submitButton.addEventListener('click', async () => {
             await this.handleClick();
         });
         this.addStyles();

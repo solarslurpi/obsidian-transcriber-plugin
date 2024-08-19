@@ -5,6 +5,7 @@ import { createFrontmatter_object, isValidYouTubeUrl } from './utils';
 import { StateManager} from './state_manager';
 import yaml from 'js-yaml';
 import * as path from 'path';
+import { get } from 'http';
 
 
 export interface Chapter {
@@ -28,21 +29,35 @@ let lastNotice: string = '';
 let eventSource: EventSource;
 let noticeIntervalID: ReturnType<typeof setInterval>;
 
+let isProcessing = false;
 
+export function setIsProcessing(state: boolean): void {
+    isProcessing = state;
+}
+
+export function getIsProcessing(): boolean {
+    return isProcessing;
+}
 
 export async function processAudio(plugin: TranscriberPlugin, input: File | string, logger: Logger): Promise<void> {
-    // Create an empty state to be filled in by incoming content.
-    const stateManager = new StateManager(logger);
-    new Notice('Starting to process audio.');
-    try {
-        await handleSSE(plugin, stateManager, logger);
-        const formData = createFormData(input, plugin.settings.audioQuality, plugin.settings.computeType, plugin.settings.chapterChunkTime, logger);
+    // Check if the plugin is already processing a transcription. If so, skip the request.
+    if (! getIsProcessing()) {
+        // Create an empty state to be filled in by incoming content.
+        const stateManager = new StateManager(logger);
+        new Notice('Starting to process audio.');
+        try {
+            await handleSSE(plugin, stateManager, logger);
+            const formData = createFormData(input, plugin.settings.audioQuality, plugin.settings.computeType, plugin.settings.chapterChunkTime, logger);
 
-        const response = await sendTranscriptionRequest(plugin.settings.transcriberApiUrl, formData, logger);
-        await handleResponse(response, logger);
-    } catch (error) {
-        logger.error(`process_audio.processAudio: Error during transcription request: ${error}`);
-        new Notice(`Could not connect to the transcriber service.  Is it running?`);
+            const response = await sendTranscriptionRequest(plugin.settings.transcriberApiUrl, formData, logger);
+            await handleResponse(response, logger);
+        } catch (error) {
+            logger.error(`process_audio.processAudio: Error during transcription request: ${error}`);
+            new Notice(`Could not connect to the transcriber service.  Is it running?`);
+        }
+    } else {
+        logger.debug("process_audio.processAudio: Already processing. Skipping request.");
+        new Notice("Already processing. Please wait for the current process to finish.");
     }
 }
 
@@ -65,19 +80,37 @@ function createFormData(input: File | string, audioQuality: string, computeType:
 }
 
 async function sendTranscriptionRequest(apiUrl: string, formData: FormData, logger: Logger): Promise<Response> {
+    logger.debug(`isProcessing: ${isProcessing}`);
+    if (getIsProcessing()) {
+        logger.debug("process_audio.sendTranscriptionRequest: Already processing. Skipping request.");
+        new Notice("Already processing. Please wait for the current process to finish.");
+        // Create a custom response to indicate that the request was skipped
+        const customResponse = new Response(null, { status: 429, statusText: 'Already processing.' });
+        return Promise.resolve(customResponse);
+    }
     logger.debug("process_audio.sendTranscriptionRequest: Sending POST request for transcription.");
+    // Set isProcessing before posting to avoid multiple requests.
+    setIsProcessing(true);
     const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData
     });
+
+    logger.debug(`Set isProcessing to ${isProcessing}`);
     return response;
 }
 
 async function handleResponse(response: Response, logger: any): Promise<void> {
+    if (response.status === 429) {
+        logger.debug(`In handleResponse. Request was skipped because it is already processing.`);
+        return;
+    }
     if (!response.ok) {
         const errorMessage = `process_audio.handleResponse: Network response was not ok: ${response.statusText}`;
+
         logger.error(errorMessage);
         new Notice(errorMessage, 5000);
+        setIsProcessing(false);
         throw new Error('Network response was not ok. Please try again.');
     }
 
@@ -204,7 +237,7 @@ async function handleContentEvent(plugin: TranscriberPlugin, event: MessageEvent
             }, timeoutMs); // Time to wait in ms to see if more data messages are to arrive.  If not,`
         }
     } catch (error) {
-        logger.error(`process_audio.handleContentEvent: Unexpected error: ${error.message}`);
+        logger.error(`***>>process_audio.handleContentEvent: Unexpected error: ${error.message}`);
         cleanup(eventSource, noticeIntervalID, stateManager, logger);
         new Notice("An unexpected error occurred. Please try again.");
     }
@@ -291,6 +324,8 @@ function saveTranscript(plugin:TranscriberPlugin, stateManager: StateManager, lo
         }
         new Notice(`Transcript saved to ${noteLocation}`);
         logger.debug(`process_audio.saveTranscript: Transcript saved to ${noteLocation}`);
+        setIsProcessing(false);
+        logger.debug(`Set isProcessing to ${isProcessing}`);
 
     } catch (error) {
         logger.error(`process_audio.saveTranscript: Error saving transcript: ${error.message}`);

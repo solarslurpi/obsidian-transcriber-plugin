@@ -74,7 +74,7 @@ export class StateManager {
             missingProperties.push("chapters");
         }
         if (Object.keys(this.emptyFrontmatter).every(key => this.state.frontmatter[key] === this.emptyFrontmatter[key])) {
-            missingProperties.push("frontmatter");
+            missingProperties.push("metadata");
         }
         // Log the missing properties
         this.logger.debug(`Missing properties: ${missingProperties.join(', ')}`);
@@ -86,6 +86,7 @@ export class StateManager {
     }
 
     resetState() {
+        this.logger.debug('!!!!!process_audio.resetState: Resetting state.');
         this.state = {
             key: '',
             basename: '',
