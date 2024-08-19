@@ -91,7 +91,7 @@ Click on the ❀ flower in the left ribbon to bring up the UI
 
 Enter either a YouTube URL, or click on the button to choose an audio file.  Then click the `Submit` button.
 
-Progress notifications will start to be shown.  It can take quite a bit of time to complete a transcription, particularly if the desired audio quality loaded a larger model
+Progress notifications will start to be shown.  It can take quite a bit of time to complete a transcription, particularly if the desired audio quality loaded a larger model.
 
 <!-- Note section, Blue -->
 <div style="padding: 10px; border-left: 3px solid #0CD2FC; background-color: #0D5463;">
@@ -122,9 +122,11 @@ To troubleshoot, set the logging to debug and check the console for messages.  T
 - [Run the plugin](#👍-use).
 
 Debug, warning, and error messages will be sent to the console. If you cannot fix the issue, please:
-- Save the console output by
+- Save the console output by right-clicking on the console and choosing `Save as...`.
 
 <div style="text-align: center;">
   <img src="docs/images/console_log.png" alt="FConsole log ui" style="width: 600px;">
 </div>
 ![console log](docs/images/console_log.jpg)
+
+- Open an [issue](https://github.com/solarslurpi/obsidian-transcriber-plugin/issues) and attach the saved console output.

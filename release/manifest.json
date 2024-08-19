@@ -2,8 +2,8 @@
 	"id": "obsidian-transcriber-plugin",
 	"name": "Obsidian Transcriber Plugin",
 	"version": "0.0.1",
-	"minAppVersion": "0.10.1",
-	"description": "Transcribes audio into files stored within an Obsidian Folder..",
+	"minAppVersion": "0.0.1",
+	"description": "Transcribes audio into files stored within an Obsidian Folder.",
 	"author": "HappyDay",
 	"isDesktopOnly": false
 }
