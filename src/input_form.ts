@@ -4,7 +4,9 @@ import { processAudio } from "./process_audio";
 import { isValidAudioFile, isValidYouTubeUrl } from './utils';
 import './styles';
 import { Logger } from 'winston';
-import { setIsProcessing, getIsProcessing} from './process_audio';
+// import { getIsProcessing, stopProcessAudio} from './process_audio';
+import { cancelAudioProcessing, sendCancelRequest} from './process_audio';
+import { StateManager} from './state_manager';
 
 export class InputForm extends Modal {
     // Instance properties.
@@ -15,11 +17,14 @@ export class InputForm extends Modal {
     healthCheckUrl: string;
     logger: Logger;
     submitButton: HTMLButtonElement;
+    cancelButton: HTMLButtonElement;
+    stateManager: StateManager;
 
     constructor(app: App, plugin: TranscriberPlugin, logger:Logger) {
         super(app);
         this.plugin = plugin;
         this.logger = logger;
+        this.stateManager = new StateManager(logger);
 
         // Initialize the health check URL based on the transcriber API URL
         const transcriberUrl = this.plugin.settings.transcriberApiUrl;
@@ -38,15 +43,15 @@ export class InputForm extends Modal {
         this.contentEl.empty();
     }
 
-    private async handleClick() {
+    private async handleSubmit() {
         // The submit button was clicked.  Handle the input and determine if the code
         // can proceed to transcribe based on the user entering either a YouTube url or file upload.
         this.logger.debug('input_form.handleClick:  start.');
-        if (getIsProcessing()) {
-            new Notice("A transcription is in progress. Please wait for it to complete.")
-            this.logger.debug('input_form.handleClick:  Processing in progress. Ignoring click.');
-            return;
-        }
+        // if (getIsProcessing()) {
+        //     new Notice("A transcription is in progress. Please wait for it to complete.")
+        //     this.logger.debug('input_form.handleClick:  Processing in progress. Ignoring click.');
+        //     return;
+        // }
 
         const urlValue = this.urlInput.getValue().trim();
         this.logger.debug(`input_form.handleClick.YOUTUBED URL Input: ${urlValue}`);
@@ -73,6 +78,16 @@ export class InputForm extends Modal {
             this.logger.debug('input_form.handleClick.Input Error: No YouTube URL or file selected.');
             new Notice('Please enter a URL or select a file.');
         }
+    }
+
+    private async handleCancel() {
+        // Cleanup.
+        sendCancelRequest(this.plugin.settings.transcriberApiUrl, this.logger);
+        cancelAudioProcessing(this.stateManager, this.logger);
+        // The input ui will now show the submit button and hide the cancel button.
+        this.plugin.processing = false;
+        new Notice('Cancelled Transcription.');
+        this.logger.debug('-->Processing cancelled.');
     }
     private async handleFileUpload(file: File) {
         // Check if the file is a valid audio file before sending it for processing.
@@ -103,12 +118,13 @@ export class InputForm extends Modal {
     private async processInput(input: File | string, type: 'file' | 'url') {
         let description = type === 'file' ? `audio file - ${(input as File).name}` : `YouTube URL - ${input}`;
         this.logger.debug(`input_form.processInput: Processing ${description}.`);
-
+        // Set the processing flag to identify that a transcription is in progress.
+        this.plugin.processing = true;
         try {
             if (type === 'file') {
-                await processAudio(this.plugin, input as File, this.logger);
+                await processAudio(this.plugin, input as File, this.stateManager, this.logger);
             } else {
-                await processAudio(this.plugin, input as string, this.logger);
+                await processAudio(this.plugin, input as string, this.stateManager, this.logger);
             }
         } catch (error) {
             new Notice(`Error: Attempting to process ${description}. ${error}`, 0);
@@ -161,15 +177,41 @@ export class InputForm extends Modal {
         // Create a horizontal line
         submitContainer.createEl('hr');
         // Create the submit button
-        this.submitButton = submitContainer.createEl('button', {
+        this.plugin.submitButton = submitContainer.createEl('button', {
             text: 'Submit',
             cls: 'file-upload-button',
         });
+        // CANCEL BUTTON
+        this.plugin.cancelButton = submitContainer.createEl('button', {
+            text: 'Cancel',
+            cls: 'file-upload-button',
+        });
+        // Set up which "button" to present.
+        // If processing is in progress, hide the submit button and show the cancel button.
+        if (this.plugin.processing) {
+            this.plugin.submitButton.style.display = 'none'; // Start with the Submit button hidden.
+            this.plugin.cancelButton.style.display = 'block'; // Start with the Cancel button visible.
+        } else {
+            this.plugin.submitButton.style.display = 'block'; // Start with the Submit button visible.
+            this.plugin.cancelButton.style.display = 'none'; // Start with the Cancel button hidden.
+        }
 
         // HANDLE CLICK
-        this.submitButton.addEventListener('click', async () => {
-            await this.handleClick();
+        this.plugin.submitButton.addEventListener('click', async () => {
+            this.plugin.submitButton.style.display = 'none'; // Hide the submit button
+            this.plugin.cancelButton.style.display = 'block'; // Show the cancel button
+            await this.handleSubmit();
+
         });
+        // HANDLE CANCEL
+        this.plugin.cancelButton.addEventListener('click', async () => {
+            // Handle cancellation logic here
+            this.plugin.cancelButton.style.display = 'none'; // Hide the cancel button
+            this.plugin.submitButton.style.display = 'block'; // Show the submit button again
+            await this.handleCancel();
+
+        });
+
         this.addStyles();
     }
 

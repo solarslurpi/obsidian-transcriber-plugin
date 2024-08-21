@@ -8,6 +8,9 @@ import { ensureFolder } from './utils';
 export default class TranscriberPlugin extends Plugin {
     settings: PluginSettings;
     logger: any;
+    submitButton: HTMLButtonElement;
+    cancelButton: HTMLButtonElement;
+    processing: boolean = false;
 
 
 
