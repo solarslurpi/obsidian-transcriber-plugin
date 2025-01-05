@@ -1,3 +1,5 @@
+__This is old and not supported. It was part of my exploration to get youtube transcriptions into Obsidian. I evolved this into the [audio_notes](https://github.com/solarslurpi/audio_notes/tree/main) project.__
+
 # Obsidian Transcriber Plugin
 
 # 📢 Description
